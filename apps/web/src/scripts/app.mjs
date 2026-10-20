@@ -193,10 +193,14 @@ function render() {
 		const progress = courseProgress(course, state);
 		for (const node of all(`[data-course-progress="${course.id}"]`)) node.textContent = progress.read ? `${progress.read} of ${progress.total} read` : `${progress.total} sections`;
 		for (const meter of all(`[data-meter="${course.id}"]`)) { meter.hidden = !progress.read; meter.value = progress.read; }
+		// The button on a book's front page skips the front page itself.
+		const inside = { ...course, lessons: course.lessons.filter((l) => l.url !== course.href) };
+		const reading = courseProgress(inside, state);
+		const began = reading.read > 0 || inside.lessons.some((l) => l.key === state.lastOpened?.key);
 		for (const begin of all(`[data-begin="${course.id}"]`)) {
-			if (!progress.next) continue;
-			begin.href = progress.next.url;
-			begin.textContent = progress.read || state.enrolled.includes(course.id) ? 'Continue reading' : 'Start reading';
+			if (!reading.next) continue;
+			begin.href = reading.next.url;
+			begin.textContent = began ? 'Continue reading' : 'Start reading';
 		}
 	}
 	for (const button of all('[data-note-for]')) button.textContent = entry(button.dataset.noteFor).note ? 'Edit your note' : 'Add a note';

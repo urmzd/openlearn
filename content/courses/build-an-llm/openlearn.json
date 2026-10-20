@@ -6,11 +6,7 @@
   "start": [
     {
       "file": "content/courses/build-an-llm/README.md",
-      "title": "Overview"
-    },
-    {
-      "file": "content/courses/build-an-llm/study-plan.md",
-      "title": "Study plan"
+      "title": "Start here"
     },
     {
       "file": "content/courses/build-an-llm/paths/course/SYSTEM.md",

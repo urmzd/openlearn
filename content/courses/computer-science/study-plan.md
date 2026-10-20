@@ -8,7 +8,7 @@ The first sixteen weeks build the mathematics, two subjects at a time, because t
 
 ## Algorithms and contests
 
-Weeks seventeen to nineteen work through [Algorithms](../algorithms/README.md), following that book's own [seventeen-day study plan](../algorithms/study-plan.md) at roughly one plan-week per calendar week. Weeks twenty and twenty-one take the advanced techniques and contest practice of [Competitive Programming](../competitive-programming/README.md).
+Weeks seventeen to nineteen work through [Algorithms](../algorithms/README.md), following its seventeen-day route at roughly one week per calendar week. Weeks twenty and twenty-one take the advanced techniques and contest practice of [Competitive Programming](../competitive-programming/README.md).
 
 ## Machine learning
 

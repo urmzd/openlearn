@@ -5,11 +5,7 @@
   "start": [
     {
       "file": "content/courses/infrastructure/README.md",
-      "title": "Overview"
-    },
-    {
-      "file": "content/courses/infrastructure/study-plan.md",
-      "title": "Study plan"
+      "title": "Start here"
     }
   ],
   "tracks": [

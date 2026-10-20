@@ -328,7 +328,8 @@ for (const { course, chapters } of outlines) {
 		'</section>',
 	].join('');
 	const contents = numbered.map((c) => {
-		const about = blurb(c.files[0]);
+		// One sentence per chapter keeps the contents scannable.
+		const about = blurb(c.files[0], 1);
 		return `- [**${chapterLabel(c)}**](${routeOf(c.files[0])})${about ? `: ${about}` : ''}`;
 	});
 	landing.set(home, {
@@ -395,7 +396,7 @@ for (const { course, chapters, references } of outlines) {
 	redirects[`/learn/${course.id}/`] = homeOf(course.id);
 }
 // A book's one-line description: the first sentences of its front matter.
-function blurb(file) {
+function blurb(file, enough = 90) {
 	if (!file || !fs.existsSync(path.join(ROOT, file))) return undefined;
 	let fence = false;
 	for (const block of fs.readFileSync(path.join(ROOT, file), 'utf8').split(/\n\s*\n/)) {
@@ -406,10 +407,11 @@ function blurb(file) {
 		// A sentence ends at . ! or ? followed by a capital, so "3 a.m., and" stays whole.
 		let out = '';
 		for (const sentence of plain.split(/(?<=[.!?])\s+(?=[A-Z])/)) {
-			if (out.length >= 90) break;
+			if (out.length >= enough) break;
 			out = out ? `${out} ${sentence}` : sentence;
 		}
-		return out.length > 240 ? `${out.slice(0, out.lastIndexOf(' ', 237))}…` : out;
+		const cap = enough < 90 ? 170 : 240;
+		return out.length > cap ? `${out.slice(0, out.lastIndexOf(' ', cap - 3))}…` : out;
 	}
 	return undefined;
 }

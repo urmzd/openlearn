@@ -5,7 +5,7 @@
   "start": [
     {
       "file": "content/courses/computer-science/README.md",
-      "title": "Learning guide"
+      "title": "Start here"
     },
     {
       "file": "content/courses/computer-science/prerequisites.md",

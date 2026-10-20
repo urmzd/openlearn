@@ -4,11 +4,11 @@ Each course is a book. It owns its chapters: every chapter lives in exactly one 
 
 ## Ownership
 
-Put a book's front matter (`README.md`, `study-plan.md`) and its chapters in `content/courses/<id>/`, one directory per chapter, one file per section:
+Put a book's front page (`README.md`) and its chapters in `content/courses/<id>/`, one directory per chapter, one file per section:
 
 ```
 <book>/
-├── README.md              front matter
+├── README.md              the Start here page
 ├── 01-<chapter>/
 │   ├── README.md          the chapter opening
 │   ├── 01-<section>.md    section 1.1
@@ -38,6 +38,10 @@ The `openlearn.json` manifest defines publication for the web app, PDF, and sour
 | `runtime` | Repository files/trees (such as solution code) included in portable packs |
 
 Every course is a reading course. Chapters show the solution and explain it; nothing is graded.
+
+## The Start here page
+
+A book's `README.md` is its landing page. Keep it short and practical: one paragraph on what the book is and who it is for, **What you will be able to do** (three to five outcomes), **Ways through this book** (one pace sentence, then two to four goal-based routes that name chapters and sections by number), and **Before you start** (prerequisites and related books). Do not list the chapters: the website appends a numbered contents list with a one-line description of each chapter, taken from the opening of the chapter's own README, plus Start or Continue reading and Save offline. There are no separate study plans; pacing lives in the routes. How sections, review questions, and solutions work is explained once, in [How to read these books](../content/references/how-to-read.md).
 
 ## Numbering
 

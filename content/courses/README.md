@@ -1,27 +1,28 @@
-# Courses
+# Books
 
-Each course has one manifest, an ordered reading list, and reusable source lessons. The platform publishes those same sources as web pages, a PDF, and a standalone course pack.
+Every book opens with a **Start here** page: who it is for, what you will be able to do, a few routes through it for different goals, and its contents. Times below are for reading the whole book; most routes are shorter.
 
-| Course | Study plan |
+| Book | Whole book |
 |---|---|
-| Build Your Own LLM System (about 67 weeks) | [build-an-llm](build-an-llm/study-plan.md) |
-| Mathematics Foundations | [Start the guided course](mathematics/README.md) |
-| Algorithm Mastery (17 days) | [algorithms](algorithms/study-plan.md) |
-| ML & AI (18-37 weeks) | [machine-learning](machine-learning/study-plan.md) |
-| Systems & Architecture (11-15 weeks) | [systems](systems/study-plan.md) |
-| Data Engineering (10-14 weeks) | [data-engineering](data-engineering/study-plan.md) |
-| AI Platform Engineering (25-35 weeks) | [ai-platform-engineering](ai-platform-engineering/study-plan.md) |
-| Diagramming & Documentation (2 weeks) | [diagramming](diagramming/study-plan.md) |
-| Programming Languages (2-3 weeks) | [programming-languages](programming-languages/study-plan.md) |
-| Software Craftsmanship (3-4 weeks) | [software-craftsmanship](software-craftsmanship/study-plan.md) |
-| Infrastructure (5-7 weeks) | [infrastructure](infrastructure/study-plan.md) |
-| Case Studies (4-8 days) | [case-studies](case-studies/study-plan.md) |
-| Technology Foundations | [Learning plan](computer-science/study-plan.md) |
-| PhD Research Track (20+ weeks) | [research](research/study-plan.md) |
+| [Mathematics Foundations](mathematics/README.md) | A few weeks, no programming needed |
+| [Mathematics for Computing](mathematics-for-computing/README.md) | About two semesters |
+| [Algorithms](algorithms/README.md) | About 17 days |
+| [Machine Learning and AI](machine-learning/README.md) | 18 to 37 weeks |
+| [Build Your Own LLM System](build-an-llm/README.md) | About 67 weeks |
+| [Systems and Architecture](systems/README.md) | 11 to 15 weeks |
+| [Data Engineering](data-engineering/README.md) | 13 to 18 weeks |
+| [AI Platform Engineering](ai-platform-engineering/README.md) | 25 to 35 weeks |
+| [Infrastructure](infrastructure/README.md) | 5 to 7 weeks |
+| [Software Craftsmanship](software-craftsmanship/README.md) | 3 to 4 weeks for the principles |
+| [Diagramming and Documentation](diagramming/README.md) | About 2 weeks |
+| [Programming Languages](programming-languages/README.md) | 6 to 8 weeks |
+| [Responsible AI](responsible-ai/README.md) | About 4 weeks |
+| [Field Engineering](field-engineering/README.md) | About 6 weeks |
+| [Case Studies](case-studies/README.md) | 2 to 3 days |
+| [Interview Preparation](interview-preparation/README.md) | Pick two or three companies |
+| [Competitive Programming](competitive-programming/README.md) | Ongoing practice |
+| [Practice: Predict and Build](../../practice/README.md) | Dip in by language |
 
-## More courses
+Two reading guides cut across the books instead of owning chapters: [Technology Foundations](computer-science/README.md), a route through computer science, and [Research Preparation](research/study-plan.md), for readers heading toward research in machine learning.
 
-- [Field Engineering](field-engineering/README.md): [course definition](field-engineering/openlearn.json).
-- [Responsible AI](responsible-ai/README.md): [course definition](responsible-ai/openlearn.json).
-- [Competitive Programming](competitive-programming/README.md): [course definition](competitive-programming/openlearn.json).
-- [Interview Preparation](interview-preparation/README.md): [course definition](interview-preparation/openlearn.json).
+New to these books? [How to read these books](../references/how-to-read.md) explains how sections, review questions, and solutions work.
