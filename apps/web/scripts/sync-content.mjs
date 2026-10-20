@@ -306,14 +306,58 @@ for (const { chapters } of outlines) {
 	}
 }
 
-for (const [f, { title, body }] of pages) {
+// A book's front page (its README) is the book's landing page: a Start or
+// Continue button, Save offline, and the contents, generated here so no
+// overview or study plan has to repeat the chapter list.
+const releases = `${GITHUB}/releases/latest/download`;
+const bookHome = new Map();
+const landing = new Map();
+for (const { course, chapters } of outlines) {
+	const home = course.start?.[0]?.file;
+	if (!home || !pages.has(home)) continue;
+	bookHome.set(course.id, home);
+	const numbered = chapters.filter((c) => c.number);
+	const first = numbered[0]?.files[0];
+	const total = chapters.reduce((n, c) => n + c.files.length, 0);
+	const actions = [
+		`<section class="course-offline" data-course="${course.id}" aria-label="This book">`,
+		`<p><span data-course-progress="${course.id}">${total} sections</span></p>`,
+		...(first ? [`<a class="primary" data-begin="${course.id}" href="${routeOf(first)}">Start reading</a>`] : []),
+		`<button type="button" class="quiet-button" data-download="${course.id}">Save offline</button>`,
+		`<span class="download-state" data-download-state="${course.id}" aria-live="polite"></span>`,
+		'</section>',
+	].join('');
+	const contents = numbered.map((c) => {
+		// One sentence per chapter keeps the contents scannable.
+		const about = blurb(c.files[0], 1);
+		return `- [**${chapterLabel(c)}**](${routeOf(c.files[0])})${about ? `: ${about}` : ''}`;
+	});
+	landing.set(home, {
+		actions,
+		contents: contents.length
+			? `\n\n## Contents\n\n${contents.join('\n')}\n\n[PDF](${releases}/openlearn-${course.id}.pdf) · [Source pack](${releases}/openlearn-${course.id}.zip)\n`
+			: `\n\n[PDF](${releases}/openlearn-${course.id}.pdf) · [Source pack](${releases}/openlearn-${course.id}.zip)\n`,
+	});
+}
+const homeOf = (id) => routeOf(bookHome.get(id) ?? 'README.md');
+// Actions go after the opening paragraph, so the pitch comes first.
+function withActions(body, actions) {
+	const blocks = body.split(/\n\s*\n/);
+	const i = blocks.findIndex((b) => b.trim());
+	blocks.splice(i + 1, 0, actions);
+	return blocks.join('\n\n');
+}
+
+for (const [f, { title, body: original }] of pages) {
+	const book = landing.get(f);
+	const body = book ? withActions(original, book.actions) + book.contents : original;
 	const extra = publications.some((p) => p.manifest.paths && f.startsWith(`${p.manifest.paths}/`)) && path.posix.basename(f) === 'README.md' ? stageTable(path.posix.dirname(f)) : '';
 	const owners = chapterNavigation.get(f) ?? [];
 	// A shared page has no single next chapter. Return readers to their course
 	// rather than following the next occurrence in the catalog sidebar.
 	const navigation = owners.length === 1 ? owners[0] : { prev: false, next: false };
 	const returnLinks = owners.length > 1
-		? `\n\n## Continue in your course\n\n${owners.map(({ course }) => `- [${course.title}](/learn/${course.id}/)`).join('\n')}\n`
+		? `\n\n## Continue in your course\n\n${owners.map(({ course }) => `- [${course.title}](${homeOf(course.id)})`).join('\n')}\n`
 		: '';
 	const front = [
 		'---',
@@ -330,49 +374,29 @@ for (const [f, { title, body }] of pages) {
 	fs.writeFileSync(dest, front + body + extra + returnLinks);
 }
 
-// Course landing pages and the sidebar use the same ordered chapter outline.
-const releases = `${GITHUB}/releases/latest/download`;
+// The sidebar uses the same ordered chapter outline as the front pages.
 // Inside a chapter's group the opening page is its introduction; the group
 // label already carries the chapter number and title.
 const pageLabel = (section, file) => (isOpening(section, file) ? 'Introduction' : titles.get(file));
 const sectionItem = (section) => section.files.length === 1
 	? { label: chapterLabel(section), link: navOf(section.files[0]) }
 	: { label: chapterLabel(section), collapsed: true, items: section.files.map((file) => ({ label: pageLabel(section, file), link: navOf(file) })) };
-const sectionMarkdown = (sections) => sections.flatMap((section) => section.files.length === 1
-	? [`- [${chapterLabel(section)}](${routeOf(section.files[0])})`, '']
-	: [`### ${chapterLabel(section)}`, '', ...section.files.map((file) => `- [${pageLabel(section, file)}](${routeOf(file)})`), '']);
-const courseItems = [];
 const courseGroups = [];
+const redirects = { '/my-learning/': '/' };
 for (const { course, chapters, references } of outlines) {
-	const url = `/learn/${course.id}/`;
-	courseItems.push({ label: course.title, link: url });
 	courseGroups.push({
 		label: course.title,
 		collapsed: false,
 		items: [
-			{ label: 'Contents', link: url },
 			...chapters.map(sectionItem),
 			...(references.length ? [{ label: 'References', collapsed: true, items: references.map(sectionItem) }] : []),
 		],
 	});
-	const body = [
-		'---', `title: ${JSON.stringify(course.title)}`, 'prev: false', 'next: false', '---', '',
-		"import CourseActions from '../../../../components/CourseActions.astro';", '',
-		...(course.tagline ? [course.tagline, ''] : []),
-		`<CourseActions id="${course.id}" />`, '',
-		'## Contents', '', ...sectionMarkdown(chapters),
-		...(references.length ? [
-			'<details>', '<summary>References</summary>', '',
-			...sectionMarkdown(references), '</details>', '',
-		] : []),
-		`[PDF](${releases}/openlearn-${course.id}.pdf) · [Source pack](${releases}/openlearn-${course.id}.zip)`, '',
-	];
-	const dest = path.join(DOCS, 'learn', course.id, 'index.mdx');
-	fs.mkdirSync(path.dirname(dest), { recursive: true });
-	fs.writeFileSync(dest, body.join('\n'));
+	// Old course pages point at the book's front page.
+	redirects[`/learn/${course.id}/`] = homeOf(course.id);
 }
 // A book's one-line description: the first sentences of its front matter.
-function blurb(file) {
+function blurb(file, enough = 90) {
 	if (!file || !fs.existsSync(path.join(ROOT, file))) return undefined;
 	let fence = false;
 	for (const block of fs.readFileSync(path.join(ROOT, file), 'utf8').split(/\n\s*\n/)) {
@@ -383,10 +407,11 @@ function blurb(file) {
 		// A sentence ends at . ! or ? followed by a capital, so "3 a.m., and" stays whole.
 		let out = '';
 		for (const sentence of plain.split(/(?<=[.!?])\s+(?=[A-Z])/)) {
-			if (out.length >= 90) break;
+			if (out.length >= enough) break;
 			out = out ? `${out} ${sentence}` : sentence;
 		}
-		return out.length > 240 ? `${out.slice(0, out.lastIndexOf(' ', 237))}…` : out;
+		const cap = enough < 90 ? 170 : 240;
+		return out.length > cap ? `${out.slice(0, out.lastIndexOf(' ', cap - 3))}…` : out;
 	}
 	return undefined;
 }
@@ -396,7 +421,7 @@ const library = {
 		id: course.id,
 		title: course.title,
 		description: course.tagline ?? blurb(course.start?.[0]?.file) ?? course.tracks.map((t) => t.title).slice(0, 3).join(', '),
-		href: `/learn/${course.id}/`,
+		href: homeOf(course.id),
 		// `chapter` groups lessons so the reader can scroll through one chapter
 		// and pause at the next chapter's opening.
 		lessons: reading.flatMap((section, i) => section.files.filter((f) => sources.includes(f)).map((f) => ({
@@ -419,6 +444,7 @@ fs.writeFileSync(path.join(DOCS, 'index.mdx'), home.join('\n'));
 // being read.
 const sidebar = courseGroups;
 fs.mkdirSync(GENERATED, { recursive: true });
+fs.writeFileSync(path.join(GENERATED, 'redirects.json'), JSON.stringify(redirects));
 fs.writeFileSync(path.join(GENERATED, 'sidebar.json'), `${JSON.stringify(sidebar, null, '\t')}\n`);
 fs.writeFileSync(path.join(GENERATED, 'course.json'), JSON.stringify({ title: manifest.title, description: manifest.tagline ?? manifest.title }));
 console.log(`synced ${pages.size} unique source pages for ${publications.length} courses`);

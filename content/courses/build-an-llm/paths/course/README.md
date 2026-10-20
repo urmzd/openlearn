@@ -6,7 +6,7 @@ The system grows in passes. Pass 1 builds the thinnest version of every layer an
 
 ## Before you begin
 
-Read the opening of [*Build Your Own LLM System*](../../README.md) first; it explains the idea that organizes the book and how its chapters fit together. Then read [The system the solutions build](SYSTEM.md), the map of every component, its language, its solution, and the contracts it meets at. You should be able to name each component and the contract it serves before starting Pass 0.
+Read the [Start here](../../README.md) page of *Build Your Own LLM System* first; it shows the routes through the book and its contents. Then read [The system the solutions build](SYSTEM.md), the map of every component, its language, its solution, and the contracts it meets at. You should be able to name each component and the contract it serves before starting Pass 0.
 
 ## The passes
 
@@ -26,4 +26,4 @@ Each pass has an opening page that lists its sections in reading order, with wha
 12. [Pass 11: Operating the system](../course-p11-operate/README.md). The v1.0.0 release, migrations, incident drills, security review, design reviews, and a mock customer engagement.
 13. [Pass 12: Multimodal](../course-p12-multimodal/README.md). Signal and image math, vision encoders, Whisper speech recognition, and multimodal evaluation.
 
-The [study plan](../../study-plan.md) suggests how to pace the passes. The stages themselves, with the files each one reads, are in this path's manifest, [`path.tsv`](path.tsv), which includes every pass's manifest in turn.
+Building every pass takes about 67 weeks at ten to twelve hours a week. The stages themselves, with the files each one reads, are in this path's manifest, [`path.tsv`](path.tsv), which includes every pass's manifest in turn.

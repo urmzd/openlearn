@@ -5,11 +5,7 @@
   "start": [
     {
       "file": "content/courses/machine-learning/README.md",
-      "title": "Overview"
-    },
-    {
-      "file": "content/courses/machine-learning/study-plan.md",
-      "title": "Study plan"
+      "title": "Start here"
     }
   ],
   "tracks": [

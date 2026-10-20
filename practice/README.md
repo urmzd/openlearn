@@ -1,108 +1,22 @@
-# Practice
+# Practice: Predict and Build
 
-The rest of this repository is a shelf of books: you read each one in order,
-chapter by chapter, with a full explanation behind every topic. This directory
-is the companion workbook. It holds small, self-contained problems, each shown
-with its answer and a worked explanation of why that answer is right.
+This is the companion workbook to the rest of the shelf: small, self-contained problems, each shown with its answer and a worked explanation of why that answer is right. Chapter 1 gives you twenty-four short programs in Go, Python, Rust, and TypeScript whose exact output you predict before reading the explanation. Chapters 2 to 10 are classic build exercises, one chapter per language; C and C++ (Chapters 2 and 3) have full reference solutions with walkthroughs, and the other languages give the exercise briefs as design questions to reason through. It is for programmers who want to find out whether a mental model actually stuck.
 
-Reading on its own produces recognition, which feels like knowledge and is
-not. You nod along to a correct solution and come away unable to rebuild it,
-defend it, or spot the bug in a near miss. The cure is not to type the code
-yourself; it is to commit to an answer before you look, and then to be able to
-explain the optimal one from first principles. Every page here is written for
-that: the problem first, the answer folded away, and the reasoning laid out so
-you can check yours step by step.
+## What you will be able to do
 
-> **What you will be able to do**
-> - Say what a short program prints and name the language rule that makes it print that.
-> - Explain why a reference implementation is shaped the way it is, and what breaks with the obvious alternatives.
-> - Recognize when several surprises across languages are really one missing mental model.
+- Say what a short program prints and name the language rule that makes it print that.
+- Explain why a reference implementation is shaped the way it is, and what breaks with the obvious alternatives.
+- Recognize when several surprises across languages are really one missing mental model, such as value versus reference semantics.
 
-## Two kinds of problem
+## Ways through this book
 
-The workbook has two parts, and they test different things:
+Chapter 1 takes a few evenings, and each of the C and C++ chapters takes about two weeks at five to six hours a week; the briefs in Chapters 4 to 10 take an evening each to reason through.
 
-| Part | What it shows | What you should be able to do afterwards |
-|------|---------------|------------------------------------------|
-| [`predict/`](predict/) | Short snippets, their exact output, and a line-by-line explanation of the language rule behind each line | Say what a program prints and name the rule that makes it print that |
-| [`build/`](build/) | Reference implementations of classic exercises, with walkthroughs of the design | Explain why the solution is shaped the way it is and what breaks with the obvious alternatives |
+- **Checking a language you just learned** (one or two evenings): the matching section of [Chapter 1: Predict-Then-Read](predict/README.md), for example [1.1 Go](predict/go/README.md) or [1.3 Rust](predict/rust/README.md). Commit to an output before you open the fold.
+- **Finding your gaps, then filling them** (two to three weeks): all of [Chapter 1](predict/README.md), then the walkthroughs its surprises point to. Three aliasing surprises in three languages is one missing model, and [2.1 Dynamic array](build/systems/c/01-dynamic-array/README.md) and [3.1 Vector](build/systems/cpp/01-vector/README.md) are where it is built.
+- **Systems design, defended line by line** (about four weeks): [Chapter 2: C](build/systems/c/README.md) in order, then [Chapter 3: C++](build/systems/cpp/README.md), whose vector, queue, and allocator sections ([3.1](build/systems/cpp/01-vector/README.md), [3.4](build/systems/cpp/05-threadsafe-queue/README.md), [3.9](build/systems/cpp/10-pool-allocator/README.md)) refer back to the C versions in [2.1](build/systems/c/01-dynamic-array/README.md), [2.7](build/systems/c/07-thread-pool/README.md), and [2.8](build/systems/c/08-arena-allocator/README.md).
+- **Design questions in a language without solutions yet** (an evening per exercise): pick a brief from Chapters 4 to 10, such as [Chapter 4: Go](build/cloud/go/README.md) or [Chapter 6: Python](build/general/python/README.md), sketch a design, then compare it with the C or C++ walkthrough.
 
-`predict` finds holes fastest, because committing to an output is cheap and
-the correction is precise. `build` finds different holes, the ones that only
-show up when every design decision has to be justified: why a growth factor of
-two, why this lock and not that one, why the destructor runs here.
+## Before you start
 
-## Predict: worked output explanations
-
-There are twenty-four snippets across Go, Rust, Python, and TypeScript, six
-each, and every one is aimed at a belief that is common, load-bearing, and
-wrong. Start at [`predict/README.md`](predict/README.md) for how to use them
-and why the cross-language pairings are the real payload, or go straight to a
-language:
-
-| Language | Worked answers |
-|----------|----------------|
-| Go | [`predict/go/`](predict/go/README.md) |
-| Rust | [`predict/rust/`](predict/rust/README.md) |
-| Python | [`predict/python/`](predict/python/README.md) |
-| TypeScript | [`predict/ts/`](predict/ts/README.md) |
-
-Each page shows the snippet's source link, then hides the output and the
-explanation behind a fold. Read the code, write down what you think it prints,
-then open the fold. A prediction you change after seeing the answer tells you
-nothing.
-
-## Build: reference implementations with walkthroughs
-
-Once `predict` has shown you where your model of a language is thin, `build`
-asks you to defend whole designs. There are ten exercises per language,
-ordered by concept rather than by difficulty, so read the stars and not the
-numbers. Everything uses the standard library only unless an exercise says
-otherwise: the point is to see how the thing itself is built, not which
-library already does it.
-
-Solutions with walkthroughs exist today for C and C++. The other languages
-list the exercise briefs only, which are still useful as design questions to
-reason through before reading a solution in a language that has one.
-
-### Core languages
-
-| Language | Focus | Status |
-|----------|-------|--------|
-| [C](build/systems/c/README.md) | Manual memory, pointers, undefined behaviour | Solutions and walkthroughs, 10 exercises |
-| [C++](build/systems/cpp/README.md) | RAII, templates, move semantics | Solutions and walkthroughs, 9 exercises |
-| [Go](build/cloud/go/README.md) | Concurrency, channels, interfaces | Exercise briefs |
-| [Rust](build/systems/rust/README.md) | Ownership, lifetimes, zero-cost abstractions | Exercise briefs |
-| [Python](build/general/python/README.md) | Data model, metaprogramming, asyncio | Exercise briefs |
-| [TypeScript](build/general/typescript/README.md) | Type narrowing, generics, runtime safety | Exercise briefs |
-
-### Optional languages
-
-These are kept because the exercises are worth thinking through, not because
-the languages are used elsewhere in this repository.
-
-| Language | Focus | Status |
-|----------|-------|--------|
-| [Zig](build/systems/zig/README.md) | Comptime, explicit allocators, C interop | Exercise briefs |
-| [Scala](build/cloud/scala/README.md) | FP plus OOP, type system, given instances | Exercise briefs |
-| [Java](build/cloud/java/README.md) | JVM internals, virtual threads, generics | Exercise briefs |
-
-Every solution is a single self-testing program: one entry point, its own
-assertions, nonzero exit on the first failure. The assertions are part of the
-answer, since they state exactly what "correct" means for the exercise. The
-programs in [*Case Studies*](../content/courses/case-studies/) are built the
-same way.
-
-## Where to start
-
-Start with `predict`. It takes minutes, and the gap between what you expected
-and what the explanation says tells you which `build` walkthrough is worth your
-time. Look for patterns across languages: three surprises about aliasing in
-three languages is not three gaps, it is one missing model of value versus
-reference semantics, and the dynamic array and vector walkthroughs in `build/`
-are where that model is built.
-
-When you want the same solution-and-walkthrough shape at the scale of a whole
-system, turn to *Build Your Own LLM System*, which builds a working system
-chapter by chapter; its reading path starts at
-[`paths/course/`](../content/courses/build-an-llm/paths/course/).
+You should be able to read and write small programs in at least one of the languages here. [*Programming Languages*](../content/courses/programming-languages/README.md) teaches the type systems and language primers that Chapter 1 checks, and [*Algorithms*](../content/courses/algorithms/README.md) covers the data structures the build chapters implement. Every solution is a single self-testing program, as are the builds in [*Case Studies*](../content/courses/case-studies/README.md); for the same solution-and-walkthrough shape at the scale of a whole system, read [*Build Your Own LLM System*](../content/courses/build-an-llm/paths/course/README.md). New to these books? [How to read these books](../content/references/how-to-read.md) explains how sections, review questions, and solutions work.
