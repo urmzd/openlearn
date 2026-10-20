@@ -4,7 +4,7 @@ This book is about what happens to a service once it runs at scale, under failur
 
 ## What you will be able to do
 
-- Package and deploy a service on Kubernetes, and set resource limits, probes, SIGTERM handling, and disruption budgets so they prevent outages instead of causing them.
+- Package and deploy a service on Kubernetes, with limits, probes, graceful shutdown, and disruption budgets that prevent outages instead of causing them.
 - Design an asynchronous architecture and defend its choice of queue or log, push or pull, and delivery semantics, with numbers from Little's Law.
 - Explain how cluster metadata is coordinated by ZooKeeper, KRaft, or Redpanda.
 - Build an inverted index, rank it with BM25, and explain how Lucene keeps it fast under writes.
@@ -15,7 +15,7 @@ This book is about what happens to a service once it runs at scale, under failur
 Reading every chapter takes five to seven weeks at eight to ten hours a week; Chapter 4 is short enough to read first if all you need is the map.
 
 - **The whole book, in order** (five to seven weeks): [Chapter 1: Containers, Kubernetes, and Workloads](01-containers-kubernetes/README.md), [Chapter 2: Messaging and Distributed Queueing](02-messaging-and-queueing/README.md), the [partitioned consumers](../ai-platform-engineering/05-durable-orchestration-and-workers/README.md#partitioned-consumers) part of Chapter 5 in *AI Platform Engineering* (rebalancing, idempotency, dead-letter queues), then [Chapter 3: Search and Indexing](03-search-and-indexing/README.md) and [Chapter 4: The Apache Stack](04-apache-stack/README.md).
-- **Adding Kubernetes support to a service** (about two weeks): the opening of [Chapter 1](01-containers-kubernetes/README.md) for the model and the caveats, then [1.1 Tracer deploy](01-containers-kubernetes/01-tracer-deploy.md) through [1.6 CI for the platform repo](01-containers-kubernetes/06-ci-for-your-repo.md). Add [1.7 Durable and worker images and charts](01-containers-kubernetes/07-durable-and-worker-charts.md) if you run stateful or queue-driven workloads.
+- **Adding Kubernetes support to a service** (about two weeks): the opening of [Chapter 1](01-containers-kubernetes/README.md) for the model and the caveats, then [1.1 Tracer deploy](01-containers-kubernetes/01-tracer-deploy.md) through [1.6 CI for the platform repo](01-containers-kubernetes/06-ci-for-your-repo.md). Add [1.7](01-containers-kubernetes/07-durable-and-worker-charts.md) for stateful or queue-driven workloads.
 - **Designing an async architecture** (about two weeks): [Chapter 2](02-messaging-and-queueing/README.md), then [partitioned consumers](../ai-platform-engineering/05-durable-orchestration-and-workers/README.md#partitioned-consumers) and its [Kafka consumers side quest](../ai-platform-engineering/05-durable-orchestration-and-workers/13-kafka-consumers/) in *AI Platform Engineering*, then [1.7](01-containers-kubernetes/07-durable-and-worker-charts.md) to scale the workers on queue depth with KEDA.
 - **Building search** (about a week): [Chapter 3](03-search-and-indexing/README.md), then [Retrieval and RAG](../ai-platform-engineering/07-retrieval-and-rag/README.md) in *AI Platform Engineering* for the dense and hybrid side.
 
