@@ -49,6 +49,16 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 | 09 | Proc macro for `derive(Builder)` | Procedural macros, `syn`, `quote`, token streams | 4 | |
 | 10 | Lock-free stack | `AtomicPtr`, `compare_exchange`, ABA problem | 5 | |
 
+## Key terms
+
+- **Borrow checker**: the part of the Rust compiler that enforces ownership and borrowing: any number of shared references (`&T`) or exactly one mutable reference (`&mut T`), and no reference outliving the value it points at; it rejects use-after-free and data races at compile time.
+- **Send and Sync**: Rust's marker traits for thread safety: a `Send` type may be moved to another thread and a `Sync` type may be shared between threads by reference, so the compiler rejects code that could race.
+- **Unsafe Rust**: code inside an `unsafe` block or function, where the compiler permits raw-pointer dereferences and other operations it cannot check, and the programmer must uphold the safety rules by hand.
+- **Algebraic data type (ADT)**: a type built from sums ("one of these variants") and products ("all of these fields"), such as a Rust `enum` with payloads; with exhaustive matching, every case must be handled explicitly.
+- **Exhaustive pattern matching**: a `match` that the compiler checks covers every variant of a type, so adding a variant turns each place that does not handle it into a compile error.
+- **Option type**: a type that holds either a value or nothing, such as Rust's `Option<T>`, used instead of null so the compiler forces every use to handle absence.
+- **Newtype pattern**: wrapping an existing type in a single-field struct, such as `struct Miles(f64)`, so the compiler tells apart values with the same representation but different meanings, at no run-time cost.
+
 ## Further reading
 
 - [The Rust Programming Language](https://doc.rust-lang.org/book/): free, the official book.

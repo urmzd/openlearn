@@ -133,6 +133,14 @@ Interviewers favor different variants. As a rough guide:
 | Two Sigma | divide-and-conquer optimization problems | Hard |
 | Renaissance | Strassen-style optimizations | Hard |
 
+## Key terms
+
+- **Base case**: an input on which a recursive function returns directly without calling itself; together with an input that strictly shrinks on every call, it guarantees that the recursion terminates.
+- **Divide and conquer / divide-and-conquer**: an algorithm design that splits a problem into independent subproblems, solves them recursively, and combines their results; unlike dynamic programming the subproblems do not overlap, and the gain comes from better asymptotics, as in merge sort.
+- **Inversion count**: the number of pairs $i < j$ with $a_i > a_j$, computed in $O(n \log n)$ during merge sort's merge by adding the number of remaining left-half elements each time a right-half element is taken first.
+- **Binary exponentiation / fast exponentiation**: computing $x^n$ by squaring $x^{\lfloor n/2 \rfloor}$ and multiplying by $x$ once more when $n$ is odd, in $O(\log n)$ multiplications; the same idea gives matrix and modular exponentiation.
+- **Closest pair of points**: finding the two nearest points in the plane in $O(n \log n)$ by splitting on $x$, solving each half, and checking only a strip around the dividing line, where each point needs comparing with a constant number of others.
+
 ## In this chapter
 
 Both examples are Python programs; run them with `python3 11-recursion-divide-conquer/example-1.py` and `python3 11-recursion-divide-conquer/example-3.py`.

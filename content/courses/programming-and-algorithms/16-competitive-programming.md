@@ -96,3 +96,15 @@ Codeforces ratings give a rough map of what to focus on at each stage:
 ## Where it shows up
 
 These skills are tested directly in some interviews. Jane Street asks probability puzzles, game theory, and optimization under constraints at an expert level. Citadel looks for fast algorithms and mathematical problem-solving at an advanced to expert level. Two Sigma asks algorithmic puzzles and data-structure design, and HRT probes low-latency thinking, bit manipulation, and cache-friendly algorithms, both at an advanced level. Google asks hard LeetCode-style problems with DP or graph twists, and DeepMind asks research-flavored algorithm design at an expert level.
+
+## Key terms
+
+- **Segment tree**: a binary tree over array ranges in which each node stores an aggregate, such as the sum or minimum, of its range; it supports point updates and range queries in $O(\log n)$ after an $O(n)$ build.
+- **Lazy propagation**: deferring range updates in a segment tree by storing pending changes at internal nodes and pushing them to the children only when a later operation descends through, which makes range updates $O(\log n)$.
+- **Fenwick tree / binary indexed tree (BIT)**: an array-based structure for prefix sums with $O(\log n)$ point updates and prefix queries, smaller and simpler than a segment tree.
+- **Sparse table**: precomputed answers for every range whose length is a power of two, built in $O(n \log n)$, that answer idempotent range queries such as range minimum in $O(1)$ on a static array.
+- **Knuth-Morris-Pratt algorithm (KMP)**: string matching in $O(n + m)$ that uses a failure function over the pattern to know, after a mismatch, how far the pattern can shift without re-reading text.
+- **Suffix array**: the starting positions of a string's suffixes in sorted order, built in $O(n \log n)$; with its LCP (longest common prefix) array it answers substring queries.
+- **Sprague-Grundy theorem**: every impartial game is equivalent to a Nim heap whose size is the game's Grundy value, so a sum of games is a win for the player to move exactly when the XOR of the Grundy values is nonzero.
+- **Number-theoretic transform (NTT)**: the fast Fourier transform carried out in arithmetic modulo a suitable prime, which multiplies integer polynomials in $O(n \log n)$ with exact results and no rounding.
+- **Convex hull trick**: a DP optimization for transitions that minimize or maximize over a set of linear functions, keeping only the lines on their lower or upper envelope so each transition is a fast query.

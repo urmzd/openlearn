@@ -109,6 +109,16 @@ Interviewers favor different variants. As a rough guide:
 | NVIDIA | parallel-friendly window operations | Medium |
 | Citadel | optimized streaming aggregation | Hard |
 
+## Key terms
+
+- **Two pointers**: a technique that walks two indices through an array, from opposite ends or in the same direction, so that each move provably skips only candidates that cannot be the answer; on sorted or monotonic data it turns an $O(n^2)$ pair search into an $O(n)$ sweep.
+- **Fast and slow pointers**: two pointers that move through a sequence at different speeds, usually one and two steps; the slow one is at the midpoint when the fast one reaches the end, and the two meet if the sequence contains a cycle.
+- **Sliding window**: a contiguous range of an array or string whose two ends move only forward, so each element enters and leaves once and the whole scan is $O(n)$.
+- **Fixed-size sliding window**: a window of exactly $k$ consecutive elements moved one step at a time, updating a running aggregate by adding the element that enters and removing the one that leaves, so all windows together cost $O(n)$.
+- **Variable-size sliding window**: a window over a contiguous subarray that grows on the right every step and shrinks on the left while a condition fails (for "longest") or holds (for "shortest"); each element enters and leaves once, so the scan is $O(n)$.
+- **Pointer-movement invariant**: the argument, stated before writing a two-pointer or sliding-window loop, that moving a given pointer cannot skip a valid answer; it is what makes such a solution correct.
+- **k-sum reduction**: solving 3Sum, 4Sum, and their relatives by sorting, fixing $k - 2$ elements in nested loops, and running a two-pointer sweep on the rest while skipping repeated values; it brings 3Sum from $O(n^3)$ to $O(n^2)$.
+
 ## In this chapter
 
 Each solution is a JavaScript function; run it with Node by adding a small driver, or paste it into an online judge.

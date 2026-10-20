@@ -153,6 +153,13 @@ Interviewers favor different variants. As a rough guide:
 | Apple | in-place operations (memory) | Medium |
 | Palantir | custom linked structures | Medium |
 
+## Key terms
+
+- **Dummy head node**: a placeholder node placed before a linked list's real head so that every real node has a predecessor; insertions, deletions, and merges then need no special case for the head, and the result is `dummy.next`.
+- **Floyd's cycle detection / tortoise and hare**: detecting a cycle in a linked list by advancing one pointer one step and another two steps until they meet, then finding the cycle's start by restarting one pointer at the head and advancing both one step at a time until they meet again.
+- **In-place list reversal**: reversing a linked list in one pass with $O(1)$ extra space by pointing each node's `next` back at its predecessor, saving the original `next` first so the rest of the list is not lost.
+- **k-way merge**: merging $k$ sorted lists by keeping their current heads in a min-heap of size $k$ and repeatedly taking the smallest, in $O(N \log k)$ time for $N$ elements in total.
+
 ## In this chapter
 
 - [Add Two Numbers](add-two-numbers.js): a recursive version of digit-by-digit addition. The `helper` function adds the current digits and the carry, appends a node for `sum % 10` to the tail, remembers the head on the first call, and recurses on both `next` pointers with the new carry, treating a missing node as $0$. It stops when the carry is zero and both lists are exhausted. The file is a solution function for Node (it begins with a `node` shebang and prints its intermediate values with `console.log`); add a driver that defines `ListNode` and builds the input lists to run it, or paste it into an online judge.

@@ -129,6 +129,15 @@ Interviewers favor different variants. As a rough guide:
 | Citadel | fast arithmetic, modular math | Hard |
 | HRT | bit tricks for low latency | Hard |
 
+## Key terms
+
+- **Bit mask**: an integer whose set bits select positions, such as `1 << i` for bit `i`; OR with it sets the bit, AND with its complement clears it, XOR toggles it, and AND tests it.
+- **Lowest set bit**: the least significant 1 bit of an integer; `x & -x` isolates it and `x & (x - 1)` clears it, both because negation in two's complement flips every bit above it.
+- **XOR trick**: using `a ^ a = 0`, `a ^ 0 = a`, and the commutativity and associativity of XOR to cancel values that appear twice, so XOR-ing a whole collection leaves the one value that appears once.
+- **Kernighan's algorithm**: counting the set bits (the popcount) of an integer by repeatedly clearing the lowest one with `n &= n - 1`, in time proportional to the number of set bits.
+- **Unsigned right shift**: JavaScript's `>>>`, which shifts in zeros and reads the result as an unsigned 32-bit integer, unlike `>>`, which copies the sign bit into the vacated positions.
+- **Pascal's rule**: the identity $\binom{n}{k} = \binom{n-1}{k-1} + \binom{n-1}{k}$, which builds Pascal's triangle and gives a DP for binomial coefficients without large factorials.
+
 ## In this chapter
 
 Each solution is a JavaScript function; run it with Node by adding a small driver, or paste it into an online judge.

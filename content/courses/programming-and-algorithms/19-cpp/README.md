@@ -58,6 +58,11 @@ The exercises are ordered by concept, not by difficulty, so if you are choosing 
 
 Exercise 03 was a hash map. Six hash maps across the exercises were consolidated into two worked sections of *Algorithms*: [A Swiss table](../15-systems-data-structures/02-swiss-table.md), in C, and [A Robin Hood hash map](../15-systems-data-structures/05-robin-hood-hash-map.md), in Rust, both in the [Systems data structures](../15-systems-data-structures/) chapter.
 
+## Key terms
+
+- **Move semantics**: transferring the resources of an object that is about to be discarded (an rvalue) to a new owner by taking its pointers instead of copying what they point at; `std::move` casts a value to an rvalue to request it.
+- **Smart pointer**: a class that owns a heap object and frees it in its destructor, applying RAII to memory; `std::unique_ptr` has exactly one owner and `std::shared_ptr` counts shared owners.
+
 ## Further reading
 
 - [cppreference.com](https://en.cppreference.com/w/): the authoritative reference.

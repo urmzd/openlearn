@@ -49,6 +49,16 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 | 09 | Property-based test framework | Generators, shrinking, `given` Arbitrary | 4 |
 | 10 | Effect system (mini-ZIO) | Trampolining, fibers, error channels | 5 |
 
+## Key terms
+
+- **Case class**: an immutable Scala class whose constructor parameters become fields and for which the compiler generates structural equality, copying, and pattern-matching support; Scala's standard way to model data.
+- **Sealed trait**: a Scala trait whose subtypes must all be defined in the same file, so the compiler knows every case and checks pattern matches for exhaustiveness; with case classes it encodes algebraic data types.
+- **Higher-kinded type**: a type parameterized by a type constructor rather than a type, such as `F[_]`, which lets one piece of code abstract over containers like `List`, `Option`, and `Future`.
+- **Path-dependent type**: a type that belongs to a particular value, written `x.T`, so the member types of two different instances are distinct and cannot be mixed.
+- **For-comprehension**: Scala syntax that desugars a sequence of generators into nested `flatMap` calls and a final `map`, giving sequential-looking code for `Option`, `Future`, and other monads.
+- **Given instance**: a Scala 3 value declared with `given` that the compiler supplies automatically wherever a parameter of its type is required; it replaces implicits for type-class instances and derivation.
+- **Opaque type**: a Scala 3 type alias whose underlying representation is visible only where it is defined, giving a distinct type with no run-time cost; a newtype without a wrapper.
+
 ## Further reading
 
 - [Scala 3 Book](https://docs.scala-lang.org/scala3/book/introduction.html): free and official.

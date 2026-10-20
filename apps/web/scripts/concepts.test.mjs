@@ -79,3 +79,16 @@ test('the concepts box lists each borrowed term with where to read more', () => 
 	assert.equal(conceptsBox([], {}), '');
 	assert.ok(withConcepts('```\ncode\n\nmore\n```', 'BOX').startsWith('BOX\n\n```'));
 });
+
+test('when sections in two books are titled after a term, the more foundational book wins', () => {
+	const algo = 'content/courses/programming-and-algorithms/04-two-pointers-sliding-window/README.md';
+	const masks = 'content/courses/ai-engineering/11-transformer/02-masks.md';
+	const idx = buildIndex([
+		...harvest(masks, keyTerms(['- **Sliding window**: an attention mask over the last $w$ tokens.'])).map((e) => ({ ...e, title: '11.2 Masks: causal, padding, sliding window' })),
+		...harvest(algo, keyTerms(['- **Sliding window**: a range whose ends only move forward.'])).map((e) => ({ ...e, title: 'Chapter 4: Two pointers and sliding window' })),
+	], new Map([[masks, 0], [algo, 1]]));
+	const systems = 'content/courses/systems/01-system-design/README.md';
+	assert.match(linkConcepts('A sliding window limiter.', systems, idx, href).body, /href="\/README.md\/"/);
+	const lstm2 = 'content/courses/ai-engineering/13-decoder-block/05-gqa.md';
+	assert.match(linkConcepts('A sliding window mask.', lstm2, idx, href).body, /href="\/02-masks.md\/"/);
+});

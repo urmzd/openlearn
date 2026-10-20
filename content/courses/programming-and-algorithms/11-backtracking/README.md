@@ -145,6 +145,16 @@ Interviewers favor different variants. As a rough guide:
 | Palantir | constraint satisfaction | Hard |
 | Anthropic | search with pruning heuristics | Medium-Hard |
 
+## Key terms
+
+- **Backtracking**: depth-first search over a tree of partial solutions that makes a choice, recurses, and undoes the choice, abandoning any branch that cannot lead to a valid solution; it enumerates subsets, permutations, and solutions to constraint problems.
+- **Choose, explore, unchoose**: the loop at the core of backtracking: add a candidate to one shared, mutable partial solution, recurse, then remove it, so every branch sees exactly the state its parent left.
+- **Pruning**: abandoning a branch of a search as soon as it is known not to lead to a valid or better solution, using sorted input, bounds, duplicate skipping, or constraint checks; it is what makes exponential searches fast on real inputs.
+- **Constraint satisfaction problem (CSP)**: a problem of assigning each variable a value from its domain so that every constraint holds, as in Sudoku, N-Queens, and map coloring; solved by backtracking over the variables with a consistency check.
+- **Constraint propagation**: shrinking the domains of unassigned variables after each assignment by removing values that can no longer be consistent, as AC-3 does, so dead ends are found before the search recurses into them.
+- **Symmetry breaking**: fixing a choice, such as the first element or the first color, so a search does not explore solutions that are mirror images or relabelings of ones it has already found.
+- **Branching factor**: the number of choices at each node of a search tree; a backtracking search costs roughly the branching factor raised to the depth, such as $2^n$ for subsets and $n!$ for permutations.
+
 ## In this chapter
 
 - [Combination Sum](combination-sum.js): this solution is to the counting variant, Combination Sum IV, which asks how many ordered sequences of `nums` sum to `target`. Because only the count is needed, it memoizes on the remaining target (`cache[0] = 1`) instead of building each combination, which turns the exponential search into a DP: for each target, sum the counts for `target - num` over every `num` that fits. It shows where backtracking ends and [dynamic programming](../09-dynamic-programming/README.md) begins. It is a solution function; run it with Node and a small driver, or in an online judge.

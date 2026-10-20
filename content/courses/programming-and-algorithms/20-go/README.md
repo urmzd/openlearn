@@ -55,6 +55,14 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 
 All of the linked sections are in *AI Engineering*, where the problem is solved as part of a larger platform rather than in isolation. Read the brief, sketch your own design, and only then open the worked version.
 
+## Key terms
+
+- **Escape analysis**: a compiler pass that keeps a value on the stack unless a reference to it can outlive the function, in which case the value is moved to the heap; Go and the JVM use it to reduce garbage-collector work.
+- **Errors as values**: reporting failure by returning an ordinary error value alongside the result, as Go's `error` interface does, instead of throwing an exception; every failure path is then an explicit check such as `if err != nil`.
+- **Accept interfaces, return structs**: the Go guideline to take parameters as small interfaces, so callers can pass anything that fits, and to return concrete types, so methods can be added later without breaking callers.
+- **Table-driven test**: a test written as a slice of input and expected-output cases run by one loop, so adding a case is one line; the standard style of Go's `testing` package.
+- **Deferred call**: a function call scheduled with Go's `defer` to run when the surrounding function returns; deferred calls run in last-in, first-out order, which makes them the place for cleanup.
+
 ## Further reading
 
 - [A Tour of Go](https://go.dev/tour/): free and interactive.

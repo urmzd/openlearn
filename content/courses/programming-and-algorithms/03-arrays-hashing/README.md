@@ -108,6 +108,13 @@ Interviewers lean on different variants. As a rough guide:
 | Stripe | practical data transformation | Medium |
 | Jane Street | mathematical properties of sets | Hard |
 
+## Key terms
+
+- **Complement lookup**: a one-pass hash-map pattern that, for each element, checks whether the partner it needs (such as `target - x`) has already been seen and only then records the element; it finds pairs in $O(n)$ instead of comparing every pair in $O(n^2)$.
+- **Frequency counting**: building a map from each value to the number of times it occurs in one pass, then answering questions about duplicates, anagrams, or the most common elements from that map.
+- **Index marking**: using an array's own indices as a hash table when its values lie in $[1, n]$, for example by negating the entry at index $v - 1$ to record that $v$ was seen; it gives $O(n)$ time with $O(1)$ extra space.
+- **Prefix sum**: the running total of an array up to each position, so any subarray sum is the difference of two prefix sums; with a hash map of the prefix sums seen so far, it counts the subarrays that sum to $k$ in $O(n)$.
+
 ## In this chapter
 
 Each solution is a JavaScript function. To run one, add a small driver that calls it and prints the result and run it with Node, or paste the function into an online judge.

@@ -130,6 +130,15 @@ Different companies favor different variants. As a rough guide:
 | Two Sigma | binary search on the answer with complex feasibility | Hard |
 | Databricks | distributed binary search | Hard |
 
+## Key terms
+
+- **Monotonic predicate**: a condition $f(x)$ over an ordered search space that flips from false to true (or true to false) exactly once; binary search finds the flip point in $O(\log n)$ evaluations.
+- **Binary search**: a search that keeps an interval known to contain the answer and halves it with one comparison per step, taking $O(\log n)$ steps; it needs a monotonic predicate, not necessarily a sorted array.
+- **Left-boundary binary search**: the binary search over a half-open interval `[left, right)` that returns the first index where a condition holds, or the length if it never does, by never discarding a `mid` that satisfies the condition.
+- **Rotated sorted array**: a sorted array shifted cyclically, such as `[4, 5, 6, 7, 0, 1, 2]`; around any midpoint one half is still sorted, which lets binary search decide which half can contain the target.
+- **Binary search on the answer**: binary searching over the range of possible answers with a monotone feasibility check, which turns an optimization problem ("the smallest capacity that works") into $O(\log n)$ decision problems ("does this capacity work?").
+- **Patience sorting**: an $O(n \log n)$ method for the longest increasing subsequence that keeps the smallest possible tail for each subsequence length and binary searches where each new value belongs; the number of piles is the length of the subsequence.
+
 ## In this chapter
 
 Each solution is a JavaScript function; run it with Node by adding a small driver, or paste it into an online judge.

@@ -18,10 +18,10 @@ import path from 'node:path';
 // word like "batch", "identity", or "kernel" means different things in
 // different books, so it is left as text.
 const WORDS = new Set([
-	'backpressure', 'backpropagation', 'bijection', 'bijective', 'coroutine', 'cotangent', 'covariance', 'currying',
+	'backpressure', 'backpropagation', 'backtracking', 'bijection', 'bijective', 'coroutine', 'cotangent', 'covariance', 'currying',
 	'deadlock', 'determinant', 'discriminant', 'dropout', 'eigenvalue', 'eigenvector', 'entropy', 'fsync',
 	'goroutine', 'gradcheck', 'heapify', 'hessian', 'idempotence', 'idempotency', 'injective', 'involution',
-	'jacobian', 'lakehouse', 'likelihood', 'linearizability', 'logits', 'microscaling', 'monomorphization',
+	'jacobian', 'lakehouse', 'likelihood', 'linearizability', 'logits', 'memoization', 'microscaling', 'monomorphization',
 	'orthonormal', 'patchify', 'perplexity', 'quantization', 'quickselect', 'quorum', 'regularization', 'roofline',
 	'safetensors', 'semaphore', 'sigmoid', 'singleflight', 'softplus', 'subgradient', 'subnormal', 'surprisal',
 	'tombstone', 'trie', 'upsert', 'variance', 'varint', 'viterbi', 'vtable',
@@ -116,19 +116,26 @@ export function senseFor(candidates, page) {
 	const book = bookOf(page);
 	// The section titled after a term is the one that teaches it.
 	const titled = (e) => e.aliases.some((alias) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegex(alias)}`, 'iu').test(e.title ?? ''));
-	const rank = (e) => {
-		if (chapterOf(e.file) === chapterOf(page)) return 0;
-		if (LEAF_BOOKS.has(bookOf(e.file)) && bookOf(e.file) !== book) return Infinity;
-		if (titled(e)) return 1;
-		if (bookOf(e.file) === book) return 2;
+	const foundation = (e) => {
 		const i = FOUNDATIONS.indexOf(bookOf(e.file));
-		return 3 + (i < 0 ? FOUNDATIONS.length : i);
+		return i < 0 ? FOUNDATIONS.length : i;
+	};
+	// Lower is better: [tier, foundation, reading order, position in the list].
+	const rank = (e) => {
+		const same = bookOf(e.file) === book;
+		if (chapterOf(e.file) === chapterOf(page)) return [0, 0, e.order, e.seq];
+		if (!same && LEAF_BOOKS.has(bookOf(e.file))) return null;
+		if (titled(e)) return [same ? 1 : 2, same ? 0 : foundation(e), e.order, e.seq];
+		return [same ? 3 : 4, same ? 0 : foundation(e), e.order, e.seq];
+	};
+	const better = (a, b) => {
+		for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];
+		return false;
 	};
 	let best = null;
 	for (const e of candidates) {
 		const r = rank(e);
-		if (r === Infinity) continue;
-		if (!best || r < best.r || (r === best.r && (e.order < best.e.order || (e.order === best.e.order && e.seq < best.e.seq)))) best = { e, r };
+		if (r && (!best || better(r, best.r))) best = { e, r };
 	}
 	return best?.e ?? null;
 }
