@@ -348,65 +348,76 @@ for (const { course, chapters, references } of outlines) {
 	courseItems.push({ label: course.title, link: url });
 	courseGroups.push({
 		label: course.title,
-		collapsed: !selected,
+		collapsed: false,
 		items: [
-			{ label: 'Course overview', link: url },
+			{ label: 'Contents', link: url },
 			...chapters.map(sectionItem),
 			...(references.length ? [{ label: 'References', collapsed: true, items: references.map(sectionItem) }] : []),
 		],
 	});
-	const firstChapter = chapters[0]?.files[0];
 	const body = [
 		'---', `title: ${JSON.stringify(course.title)}`, 'prev: false', 'next: false', '---', '',
+		"import CourseActions from '../../../../components/CourseActions.astro';", '',
 		...(course.tagline ? [course.tagline, ''] : []),
-		...(firstChapter ? [`**[Begin the course](${routeOf(firstChapter)})**`, ''] : []),
-		'Follow the chapters in order. Use the references when you need supporting explanations or more depth.', '',
-		'## Chapters', '', ...sectionMarkdown(chapters),
+		`<CourseActions id="${course.id}" />`, '',
+		'## Contents', '', ...sectionMarkdown(chapters),
 		...(references.length ? [
-			'## References', '',
-			'<details>', '<summary>Browse supporting material</summary>', '',
+			'<details>', '<summary>References</summary>', '',
 			...sectionMarkdown(references), '</details>', '',
 		] : []),
-		'## Take the course offline', '',
-		"import CourseActions from '../../../../components/CourseActions.astro';", '',
-		`<CourseActions id="${course.id}" />`, '',
-		`[Download PDF](${releases}/openlearn-${course.id}.pdf) · [Download source pack](${releases}/openlearn-${course.id}.zip)`, '',
+		`[PDF](${releases}/openlearn-${course.id}.pdf) · [Source pack](${releases}/openlearn-${course.id}.zip)`, '',
 	];
 	const dest = path.join(DOCS, 'learn', course.id, 'index.mdx');
 	fs.mkdirSync(path.dirname(dest), { recursive: true });
 	fs.writeFileSync(dest, body.join('\n'));
+}
+// A book's one-line description: the first sentences of its front matter.
+function blurb(file) {
+	if (!file || !fs.existsSync(path.join(ROOT, file))) return undefined;
+	let fence = false;
+	for (const block of fs.readFileSync(path.join(ROOT, file), 'utf8').split(/\n\s*\n/)) {
+		const text = block.trim();
+		if (text.startsWith('```')) fence = !fence;
+		if (fence || !text || /^(#|>|\||<|-|\*|\d+\.|!\[)/.test(text)) continue;
+		const plain = stripInline(text.replace(/\s+/g, ' ')).replace(/\$/g, '');
+		// A sentence ends at . ! or ? followed by a capital, so "3 a.m., and" stays whole.
+		let out = '';
+		for (const sentence of plain.split(/(?<=[.!?])\s+(?=[A-Z])/)) {
+			if (out.length >= 90) break;
+			out = out ? `${out} ${sentence}` : sentence;
+		}
+		return out.length > 240 ? `${out.slice(0, out.lastIndexOf(' ', 237))}…` : out;
+	}
+	return undefined;
 }
 const library = {
 	title: manifest.title,
 	courses: [...publications].sort((a, b) => a.manifest.title.localeCompare(b.manifest.title, 'en', { sensitivity: 'base' })).map(({ manifest: course, reading }) => ({
 		id: course.id,
 		title: course.title,
-		description: course.tagline ?? course.tracks.map((t) => t.title).slice(0, 3).join(', '),
+		description: course.tagline ?? blurb(course.start?.[0]?.file) ?? course.tracks.map((t) => t.title).slice(0, 3).join(', '),
 		href: `/learn/${course.id}/`,
-		lessons: reading.flatMap((section) => section.files).filter((f) => sources.includes(f)).map((f) => ({ key: f, title: titles.get(f), url: routeOf(f) })),
+		// `chapter` groups lessons so the reader can scroll through one chapter
+		// and pause at the next chapter's opening.
+		lessons: reading.flatMap((section, i) => section.files.filter((f) => sources.includes(f)).map((f) => ({
+			key: f, title: titles.get(f), url: routeOf(f), chapter: i, chapterTitle: chapterLabel(section),
+		}))),
 	})),
 };
 fs.mkdirSync(GENERATED, { recursive: true });
 fs.writeFileSync(path.join(GENERATED, 'library.json'), JSON.stringify(library));
 fs.mkdirSync(path.join(SITE, 'public/app'), { recursive: true });
 fs.writeFileSync(path.join(SITE, 'public/app/catalog.json'), JSON.stringify(library));
+// The home page is the shelf: your books, where you left off, and your notes.
 const home = [
-	'---', `title: ${JSON.stringify(selected ? manifest.title : 'Your next chapter')}`, 'description: Courses for curious people. Learn at your own pace, online or offline.', '---', '',
-	"import CourseLibrary from '../../components/CourseLibrary.astro';", '', '<CourseLibrary />', '',
+	'---', `title: ${JSON.stringify(selected ? manifest.title : 'Your books')}`, 'description: Free books on technology, mathematics, and engineering. Read online or save a book for offline reading.', 'template: splash', '---', '',
+	"import Shelf from '../../components/Shelf.astro';", '', '<Shelf />', '',
 ];
 fs.writeFileSync(path.join(DOCS, 'index.mdx'), home.join('\n'));
-const myLearning = [
-	'---', 'title: My learning', 'description: Your reading progress, notes, and downloaded courses.', '---', '',
-	"import MyLearning from '../../../components/MyLearning.astro';", '', '<MyLearning />', '',
-];
-fs.mkdirSync(path.join(DOCS, 'my-learning'), { recursive: true });
-fs.writeFileSync(path.join(DOCS, 'my-learning/index.mdx'), myLearning.join('\n'));
 
-const sidebar = [
-	{ label: 'My learning', link: '/my-learning/' },
-	{ label: 'All courses', link: '/' },
-	{ label: 'Courses', items: courseGroups },
-];
+// One group per book; src/routeData.ts shows only the group of the book
+// being read.
+const sidebar = courseGroups;
 fs.mkdirSync(GENERATED, { recursive: true });
 fs.writeFileSync(path.join(GENERATED, 'sidebar.json'), `${JSON.stringify(sidebar, null, '\t')}\n`);
 fs.writeFileSync(path.join(GENERATED, 'course.json'), JSON.stringify({ title: manifest.title, description: manifest.tagline ?? manifest.title }));

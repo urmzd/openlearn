@@ -117,3 +117,9 @@ test('an evicted course is no longer advertised as saved', async () => {
   await h.caches.delete('openlearn-course:maths:new');
   assert.equal((await h.message({ type: 'STATUS' }))[0].saved.length, 0);
 });
+test('a new release takes over as soon as its shell is cached', async () => {
+  const h = await harness(); let skipped = false;
+  h.context.self.skipWaiting = async () => { skipped = true; };
+  let work; h.events.get('install')({ waitUntil: (p) => { work = p; } }); await work;
+  assert.equal(skipped, true);
+});

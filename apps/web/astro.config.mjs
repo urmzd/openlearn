@@ -11,6 +11,8 @@ import course from './src/generated/course.json' with { type: 'json' };
 export default defineConfig({
 	site: process.env.OPENLEARN_SITE_URL ?? 'https://openlearn.urmzd.com',
 	trailingSlash: 'always',
+	// My learning moved onto the shelf.
+	redirects: { '/my-learning/': '/' },
 	// The READMEs write LaTeX as $...$ and $$...$$, the way GitHub renders it.
 	markdown: {
 		remarkPlugins: [remarkMath],
@@ -29,6 +31,9 @@ export default defineConfig({
 				Footer: './src/components/Footer.astro',
 			},
 			plugins: [starlightLlmsTxt()],
+			routeMiddleware: './src/routeData.ts',
+			// Sections read top to bottom; the menu already lists them.
+			tableOfContents: false,
 			sidebar,
 		}),
 	],
