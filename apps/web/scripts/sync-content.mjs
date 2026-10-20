@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { courseOutlines, chapterNeighbors, chapterParts } from './course-navigation.mjs';
 import { stableSourcePath } from './legacy-source-paths.mjs';
+import { buildIndex, conceptsBox, harvest, linkConcepts, withConcepts } from './concepts.mjs';
 
 const SITE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = path.resolve(SITE, '../..');
@@ -312,6 +313,35 @@ for (const { chapters } of outlines) {
 	}
 }
 
+// Concept previews. Every section's Key terms list is the glossary: a section
+// that uses a term taught elsewhere links its first use to a preview and
+// lists it at the top, with a link to the section that teaches it in full.
+const readingOrder = new Map();
+const sectionPages = new Set();
+for (const { chapters } of outlines) {
+	for (const chapter of chapters) {
+		for (const file of chapter.files) {
+			if (!readingOrder.has(file)) readingOrder.set(file, readingOrder.size);
+			if (chapter.labels?.[file]) sectionPages.add(file);
+		}
+	}
+}
+const conceptIndex = buildIndex([...pages].flatMap(([file, page]) => harvest(file, page.body).map((entry) => ({ ...entry, title: page.title }))), readingOrder);
+const bookTitles = new Map(publications.map((p) => [p.manifest.id, p.manifest.title]));
+let linkedConcepts = 0;
+for (const file of sectionPages) {
+	const page = pages.get(file);
+	if (!page) continue;
+	const { body, used } = linkConcepts(page.body, file, conceptIndex, routeOf);
+	linkedConcepts += used.length;
+	page.body = withConcepts(body, conceptsBox(used, {
+		page: file,
+		titleOf: (f) => titles.get(f),
+		bookTitleOf: (id) => bookTitles.get(id) ?? id,
+		hrefOf: routeOf,
+	}));
+}
+
 // A book's front page (its README) is the book's landing page: a Start or
 // Continue button, PDF download, and contents, generated here so no
 // overview or study plan has to repeat the chapter list.
@@ -471,4 +501,4 @@ fs.mkdirSync(GENERATED, { recursive: true });
 fs.writeFileSync(path.join(GENERATED, 'redirects.json'), JSON.stringify(redirects));
 fs.writeFileSync(path.join(GENERATED, 'sidebar.json'), `${JSON.stringify(sidebar, null, '\t')}\n`);
 fs.writeFileSync(path.join(GENERATED, 'course.json'), JSON.stringify({ title: manifest.title, description: manifest.tagline ?? manifest.title }));
-console.log(`synced ${pages.size} unique source pages for ${publications.length} courses`);
+console.log(`synced ${pages.size} unique source pages for ${publications.length} courses, ${conceptIndex.byAlias.size} concept names, ${linkedConcepts} concept links`);

@@ -8,7 +8,7 @@
     "build": "pnpm sync && astro build && node scripts/build-pwa.mjs",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "node --test tests/learning.test.mjs tests/offline.test.mjs scripts/course-navigation.test.mjs"
+    "test": "node --test tests/learning.test.mjs tests/offline.test.mjs scripts/course-navigation.test.mjs scripts/concepts.test.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "7.3.2",
