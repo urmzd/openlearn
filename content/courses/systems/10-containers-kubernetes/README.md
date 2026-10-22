@@ -62,11 +62,11 @@ The objects above are records. Something has to read them and make the world mat
 |-----------|---------|-----|
 | **API server** | control plane | The only front door. Authenticates, authorizes (RBAC), runs admission webhooks, and reads and writes objects. Every other component talks only to it. |
 | **etcd** | control plane | The consistent key-value store that holds every object, which is to say the desired state. Lose it without a backup and you lose the cluster. |
-| **Controller manager** | control plane | Runs the built-in controllers (Deployment, ReplicaSet, Job, node, endpoints), each a reconciliation loop over one kind of object. |
+| **Controller manager** | control plane | Runs the built-in controllers (Deployment, ReplicaSet, Job, node, EndpointSlice), each a reconciliation loop over one kind of object. |
 | **Scheduler** | control plane | Assigns each unscheduled Pod to a node: filters out nodes that cannot fit it, scores the rest, and writes the choice onto the Pod. |
 | **kubelet** | every node | Watches for Pods assigned to its node, starts their containers, runs their probes, and reports status back. |
 | **Container runtime** | every node | containerd (or CRI-O), which pulls images and starts the actual processes when the kubelet asks. |
-| **kube-proxy** | every node | Programs iptables or IPVS rules so a Service's virtual IP reaches the ready Pods behind it. |
+| **kube-proxy** | every node | Programs iptables, IPVS, or nftables rules so a Service's virtual IP reaches the ready Pods behind it. |
 | **Device plugins** | every node | Advertise hardware such as GPUs to the kubelet as countable extended resources. |
 
 `kubectl` is none of these. It is a client that turns your YAML into HTTPS calls to the API server, and its job ends there.
@@ -97,7 +97,7 @@ sequenceDiagram
 3. **The ReplicaSet controller** sees "want 3, have 0" and creates three Pod objects. They have no node yet, so they show as `Pending`.
 4. **The scheduler** sees unassigned Pods. For each, it filters out nodes without enough free CPU, memory, or extended resources, nodes whose taints the Pod does not tolerate, and nodes that fail its selectors or affinity, then scores the survivors and writes `nodeName` onto the Pod. If no node passes the filter, the Pod stays `Pending` and the Cluster Autoscaler may add one.
 5. **The kubelet** on that node sees a Pod assigned to it. It asks any device plugins for the extended resources the Pod requested, mounts volumes, and tells the container runtime to pull the image and start the containers.
-6. **The kubelet** runs the startup, readiness, and liveness probes and reports status. When readiness passes, the endpoints controller adds the Pod to its Service, and **kube-proxy** on every node routes the Service's IP to it.
+6. **The kubelet** runs the startup, readiness, and liveness probes and reports status. When readiness passes, the EndpointSlice controller adds the Pod to its Service, and **kube-proxy** on every node routes the Service's IP to it.
 
 Now kill one of the Pods. The ReplicaSet controller sees "want 3, have 2", creates a replacement, and the cycle runs again from step 4. A rolling update is the same loop one level up: the Deployment controller creates a second ReplicaSet for the new template and shifts the replica counts from old to new in steps, keeping the old ReplicaSet around so a rollback is just shifting them back.
 

@@ -2,7 +2,7 @@
 
 The capacity math in [Serving, Capacity & Load Testing](04-serving-and-load/README.md) ends with a number: so many replicas, each needing so many GPUs, with a given set of engine flags. This section turns that number into a running fleet on Kubernetes. Kubernetes was designed for small, cheap, stateless pods that start in seconds and can be packed anywhere. An LLM replica is the opposite: it asks for whole GPUs that are scarce and expensive, it needs tens or hundreds of gigabytes of weights before it can answer anything, it takes minutes to start, and the way you route requests to it changes its throughput. Almost every default (round-robin Services, CPU autoscaling, surge rollouts, quick liveness probes) is wrong for it, and each wrong default has a cost you can compute.
 
-We work through the deployment in the order a platform engineer builds it: the arithmetic that sets the pod's shape and the replica count, the GPU node pool, getting weights from Hugging Face onto the node, the Deployment itself, rollouts, autoscaling, multi-node replicas, routing, and disaggregated prefill and decode as Kubernetes objects. Each step comes with the manifest and the reason for each field.
+We work through the deployment in the order a platform engineer builds it: the arithmetic that sets the pod's shape and the replica count, the GPU node pool, getting weights from Hugging Face onto the node, the Deployment itself, rollouts, autoscaling, multi-node replicas, routing and the path a request takes through the cluster, disaggregated prefill and decode as Kubernetes objects, failure and failover, and running many models on one shared GPU cluster. Each step comes with the manifest and the reason for each field.
 
 You should have read the chapter opening, [LLM Systems & Inference](README.md), [Inside an Inference Engine](06-inside-an-inference-engine.md), which explains what each pod below is doing as it starts, and the memory budget and runbook in [Serving, Capacity & Load Testing](04-serving-and-load/README.md). The Kubernetes basics (Deployments, Services, Helm, KEDA) are built step by step in [Containers and Kubernetes](../../systems/10-containers-kubernetes/README.md) in *Systems Engineering*; this section assumes them and adds what changes when the workload is a GPU-bound model server. How weights move from the Hub to GPU memory is covered byte by byte in [Model Loading: Hub to GPU](03-model-loading/README.md).
 
@@ -14,6 +14,8 @@ You should have read the chapter opening, [LLM Systems & Inference](README.md), 
 > - Choose a strategy for getting Hugging Face weights onto nodes, and compute the cold-start and scale-out cost of each.
 > - Write a vLLM Deployment whose probes, shared memory, rollout strategy, and termination grace match how a model server actually behaves.
 > - Autoscale on queue depth with enough lead time, run a model across nodes with LeaderWorkerSet, and size separate prefill and decode pools.
+> - Trace a request through the gateway, the endpoint picker, and the engine, and set proxy timeouts and drain periods from the longest stream.
+> - Size a fleet to survive the loss of a replica, a node, or a zone, and run disaggregated pools and many models on a shared GPU cluster.
 
 ## From the capacity plan to a pod shape
 
@@ -58,7 +60,7 @@ Follow one model pod from request to running engine to see where each piece acts
 1. **The device plugin advertises.** On each GPU node it reports a count, say `nvidia.com/gpu: 8`, to the kubelet, which publishes it in the node's status as allocatable capacity.
 2. **The pod asks.** Its container spec sets `nvidia.com/gpu: 2` in `limits` (and therefore in `requests`).
 3. **The scheduler filters and binds.** It drops every node with fewer than two unallocated GPUs, every node whose `nodeSelector` labels do not match, and every node whose taint the pod does not tolerate, scores what is left, and binds the pod to one node. Because a pod is never split across nodes, both GPUs come from the same machine.
-4. **The kubelet allocates.** When it starts the pod, it asks the device plugin for two specific devices. The plugin answers with the device nodes and environment the container runtime must expose, so the container sees exactly those two GPUs, numbered 0 and 1, and none of the other six.
+4. **The kubelet allocates.** When it starts the pod, the kubelet's device manager picks two free devices and calls the plugin's `Allocate` with their IDs. The plugin answers with what the container runtime must expose (device nodes, mounts, and environment, or CDI device names), so the container sees exactly those two GPUs, numbered 0 and 1, and none of the other six.
 5. **The engine runs.** vLLM starts with `--tensor-parallel-size=2`, finds two visible GPUs, and its all-reduces run over the NVLink between them.
 
 When a pod is deleted, the kubelet returns its devices to the node's free pool, and the scheduler can bind the next pod to them.
@@ -296,6 +298,24 @@ A plain Service spreads requests evenly, which is wrong for an LLM in two ways. 
 
 The **Gateway API Inference Extension** adds an `InferencePool` resource, a set of model-server pods behind a Gateway, and an **endpoint picker** that chooses a pod per request using the engines' own metrics: queue depth, KV utilization, which LoRA adapters each pod has loaded, and prefix-cache affinity. Projects such as llm-d and NVIDIA Dynamo build on the same idea. Use one once you have more than a couple of replicas and either a large shared prefix or many adapters; until then, a Service is fine.
 
+## A request's path through the cluster
+
+A chat completion crosses five hops before its first token comes back, and each one can cut a stream short. In order:
+
+1. **The edge.** A cloud load balancer and a Gateway (or Ingress) terminate TLS and pick a route.
+2. **The AI gateway.** It checks the API key, applies rate limits and quotas, records usage, and picks a model route, as built in [Gateway](../25-ai-gateway/README.md).
+3. **The endpoint picker or Service.** It chooses one pod, by engine metrics and prefix affinity or by round-robin.
+4. **The engine's API server.** vLLM tokenizes the prompt and admits the request to its scheduler's waiting queue.
+5. **The engine loop.** Continuous batching runs the request's prefill, then one decode step at a time, as described in [Inside an Inference Engine](06-inside-an-inference-engine.md). Each new token goes back as a server-sent event through every hop above.
+
+Three settings along that path are wrong by default for LLM streams.
+
+**Timeouts must outlast the longest generation.** Every proxy hop has a request or idle timeout. Envoy, which many Gateway implementations build on, defaults to a 15-second route timeout, and many cloud load balancers close idle connections after about a minute. Compute the longest stream instead: an output cap of 4,096 tokens at the 50 ms TPOT SLO streams for up to $4096 \times 0.05 \approx 205$ s, plus the time to first token. Set the HTTPRoute `timeouts` field, the load balancer's idle timeout, and the gateway's upstream timeout above that.
+
+**The drain period must too.** The Deployment above gives a deleted pod 120 s of grace, and the 15 s preStop sleep counts against it. The remaining 105 s, at 50 ms per token, covers outputs up to about 2,100 tokens; a longer stream is cut off mid-answer on every rollout and scale-in. Set `terminationGracePeriodSeconds` to the preStop sleep plus the longest-stream number.
+
+**Shed load at the front, not in readiness.** When traffic outruns capacity, the engine's waiting queue grows and every queued request's TTFT grows with it. Reject excess early, with a 429 or 503 and a `Retry-After` from the AI gateway or the endpoint picker, both of which can read queue depth. Do not fail the readiness probe on load: a busy pod that drops out of the endpoints pushes its share onto the others, which then drop out too, and the fleet flaps.
+
 ## Disaggregated prefill and decode as two pools
 
 [Disaggregation](04-serving-and-load/README.md#disaggregated-prefill-and-decode) becomes, on Kubernetes, two Deployments (or two LeaderWorkerSets) of the same model: a prefill pool started with the engine's prefill role and a decode pool with the decode role, a KV connector between them (NIXL over RDMA), and a router that sends each request to a prefill worker, then a decode worker. The pools scale independently, which is the point: you size each for its own bottleneck.
@@ -308,9 +328,99 @@ Size them from first principles, using the worked chatbot (20 req/s, 2,000-token
 
 These are first-order numbers: they ignore communication time, attention compute, and the KV transfer itself, and they must be confirmed by load-testing each pool. But they show how to set the ratio, and why it moves with the traffic. If the shared prefix stops being cacheable, prefill demand quadruples and the prefill pool must grow while the decode pool stays the same, which an aggregated fleet cannot do without overbuying decode.
 
+### Running the two pools
+
+On Kubernetes the two pools are two workloads (Deployments, or LeaderWorkerSets for multi-node instances) built from the same image and the same weights, started with different engine roles: vLLM's `--kv-transfer-config` with a NIXL connector, or SGLang's `--disaggregation-mode prefill|decode`. A disaggregation-aware router sits in front and makes the two-hop call, picking a prefill worker and a decode worker per request. llm-d and NVIDIA Dynamo package that router, and [Routing, cascades, and failover](../25-ai-gateway/04-routing.md) builds one by hand; [Disaggregated prefill and decode](../23-model-serving/07-disaggregated-prefill-decode.md) builds the engine side, including the KV hand-off.
+
+Three Kubernetes concerns follow from the KV transfer:
+
+- **Placement.** The KV cache crosses RDMA, so the prefill and decode pods must sit in the same network block, with the RDMA devices exposed to their containers, exactly as for a multi-node LeaderWorkerSet. Over TCP the transfer cost in [Serving, Capacity & Load Testing](04-serving-and-load/README.md#disaggregated-prefill-and-decode) erases the gain.
+- **Separate autoscaling signals.** Scale the prefill pool on its waiting queue or on TTFT, and the decode pool on KV-cache usage and running sequences, which track TPOT. One ScaledObject per pool, each with its own threshold. The ratio between them moves with prompt length and the cache hit rate, as the review question at the end of this section shows; Dynamo's planner rebalances it automatically.
+- **Minimum size.** Each pool needs at least two instances on different nodes. A pool of one is a single point of failure for every request.
+
+### When a pool fails
+
+Disaggregation turns one failure domain per request into two, and each failure lands at a different point in the request:
+
+| Failure | Bytes sent to the client? | What the router does |
+|---------|---------------------------|----------------------|
+| Prefill pod dies before the hand-off | No | Retries on another prefill worker |
+| KV transfer fails or times out | No | Releases the decode worker's partial blocks and retries the whole request |
+| Decode pod dies mid-stream | Yes | Ends the stream with an SSE `error` event (the commit rule, below) |
+| The whole prefill pool is down | No | Every request fails; route to an aggregated fallback Deployment if you keep one |
+
+Disaggregation pays at scale, with long prompts and strict TPOT, on an RDMA fabric. With a handful of replicas, short prompts, or no RDMA, one aggregated Deployment is simpler and has half the ways to fail.
+
+## Failure domains and failover
+
+Every layer of the fleet fails: an engine process, a GPU, a node, a zone, a whole cluster. Kubernetes replaces a lost replica, but only after a full cold start, so the fleet must carry enough spare capacity to ride out the failures you choose to survive, and the router must keep in-flight requests from turning into wrong answers.
+
+### What fails and what Kubernetes does
+
+| Failure | How it shows | What Kubernetes does on its own | What you add |
+|---------|--------------|---------------------------------|--------------|
+| Engine crash or OOM | Container exits | Restarts the container; the replica is out for one cold start | Headroom; a startup probe sized to the cold start |
+| GPU fault (XID error, ECC error, GPU off the bus) | CUDA errors or a hung engine; the process may stay alive | Nothing, unless the liveness probe fails | A liveness probe that exercises the engine; DCGM health checks; automation that cordons and drains a node with a failing GPU |
+| Node lost (kernel panic, partition, spot reclaim) | Node goes `NotReady` | Evicts its pods only after their unreachable toleration expires: 300 s by default | Shorter `tolerationSeconds` on serving pods; replicas spread across nodes |
+| One pod of a LeaderWorkerSet group | The group can no longer serve | Restarts the whole group (`RecreateGroupOnPodRestart`) | Count the group as one replica; its cold start is multi-node |
+| Zone outage | Many nodes `NotReady` at once | The same, at scale; replacements need free GPUs in other zones | Spread across zones; reserved capacity in each |
+| Cluster or region outage | Everything | Nothing | A second cluster behind a global gateway, or a fallback route to another provider |
+
+The 300 s default matters most. Kubernetes adds a five-minute toleration for `node.kubernetes.io/unreachable` and `node.kubernetes.io/not-ready` to every pod, so a replica on a dead node is not even replaced until five minutes after the node stops responding, and then it pays its cold start. Shorten it for serving pods, and spread replicas so one node never holds most of them:
+
+```yaml
+spec:
+  tolerations:
+    - { key: nvidia.com/gpu, operator: Exists, effect: NoSchedule }
+    - { key: node.kubernetes.io/unreachable, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
+    - { key: node.kubernetes.io/not-ready, operator: Exists, effect: NoExecute, tolerationSeconds: 30 }
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector: { matchLabels: { app: llama-70b } }
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector: { matchLabels: { app: llama-70b } }
+```
+
+A short toleration only starts the replacement sooner; the cold start still follows. It is the spare capacity that carries the traffic in between.
+
+### Sizing for the failure you must survive
+
+The rule is one inequality over the largest failure domain you have decided to survive:
+
+```latex
+(\text{replicas} - \text{replicas in the largest domain}) \times \text{goodput per replica} \;\ge\; \text{peak req/s}
+```
+
+Apply it to the worked fleet, 5 replicas at 6 req/s of goodput against a 20 req/s peak:
+
+- **Losing one replica:** $4 \times 6 = 24 \ge 20$. The fleet survives, running hotter until the replacement is ready.
+- **Losing a node, as packed earlier:** node 1 holds four of the five replicas, so one replica is left, $1 \times 6 = 6$ req/s. Packing pods to fill nodes made one node 80% of the fleet.
+- **Surviving any one node:** four replicas must remain after the largest node goes, since $\lceil 20 / 6 \rceil = 4$. Three nodes with two replicas each does it: 6 replicas and 12 GPUs, and losing a node leaves $4 \times 6 = 24$ req/s. That is 20% more GPUs than the 10-GPU fleet; the 12 GPUs left free on the three nodes can host other models or batch work that yields to serving.
+
+Surviving a zone is the same calculation with zones as the domain. Decide the domain explicitly: one replica is nearly free, one node usually costs a node, and one zone costs a zone's worth of reserved GPUs.
+
+### The request in flight
+
+Spare capacity protects the requests that arrive after a failure. The ones already running on a dead pod follow the **commit rule** from [Routing, cascades, and failover](../25-ai-gateway/04-routing.md): if no byte has reached the client, the router retries on another replica and the client sees only a slower first token; once bytes have streamed, the stream ends with an SSE `error` event, because no other replica holds that sequence's KV cache. Never splice a stream from another replica (it continues from a different state and reads as plausible nonsense), and never close it silently (the client takes a truncated answer as complete). [A decode worker dies mid-stream](../../systems/12-incident-response-and-chaos/02-kill-decode.md) in *Systems Engineering* runs exactly this failure as a drill, with the alert and the SLO math.
+
 ## Many fine-tunes on one base
 
 When many teams or customers each have a LoRA fine-tune of the same base model, the deployment is one base Deployment that serves all the adapters, not one Deployment per fine-tune. Start vLLM with `--enable-lora`, `--max-loras` (adapters resident on the GPU per batch), and `--max-lora-rank`, and either list adapters at startup with `--lora-modules` or, with `VLLM_ALLOW_RUNTIME_LORA_UPDATING=True`, load them at runtime through `/v1/load_lora_adapter`. Each adapter appears as its own model name on the OpenAI-compatible API. The economics are in [Serving, Capacity & Load Testing](04-serving-and-load/README.md#multi-lora-serverless-versus-dedicated-cold-start-and-autoscaling): an 84 MB adapter loads in seconds where a 16 GB full fine-tune needs its own GPU. The routing consequence is adapter affinity: an endpoint picker that knows which pods already have an adapter loaded avoids swapping it in on every request.
+
+## Building at scale: many models, many teams
+
+Past one model the hard problem changes from writing a Deployment to sharing a finite, expensive pool of GPUs among models, teams, and kinds of work. Six practices carry most of the weight.
+
+- **One pool per model, one gateway in front.** Each model gets its own Deployment or LeaderWorkerSet, its own `InferencePool`, and its own autoscaler, because its goodput, flags, and traffic differ. One Gateway routes on the request's `model` field to the right pool, and the AI gateway applies keys and quotas per tenant. Popular models keep warm minimums; long-tail models either scale to zero and accept the cold start, or become LoRA adapters on a shared base.
+- **Priority, quotas, and gang admission.** Serving, batch evaluation, and fine-tuning compete for the same GPUs. Give serving a higher `PriorityClass` so it preempts batch work during a spike. Use Kueue for per-team GPU quotas that can borrow idle capacity, and for all-or-nothing (gang) admission, so a two-node LeaderWorkerSet group or a training job gets all of its pods or none. Without it, half-scheduled groups hold GPUs and serve nothing.
+- **Heterogeneous hardware.** Keep a node pool per GPU type, labeled by GPU Feature Discovery, and put each model on the cheapest GPU that meets its SLO, which the memory budget in [Serving, Capacity & Load Testing](04-serving-and-load/README.md) decides. Give each hardware type its own Deployment, since goodput, engine flags, and replica counts all change with the GPU.
+- **Capacity is not elastic.** Cloud GPU stock runs out, and the cluster autoscaler cannot create an H100 the region does not have. Reserve capacity for the serving baseline and the failure headroom above; burst onto on-demand or spot capacity for batch and evaluation work, whose deadlines tolerate a reclaim.
+- **Startup at scale.** A vLLM image is several gigabytes and the weights tens to hundreds more, and a 50-node scale-out multiplies both. Pre-pull images onto GPU nodes with a DaemonSet or use a lazy-pulling snapshotter, keep weights in node-local caches, and stagger restarts so a fleet-wide rollout does not become a storm.
+- **The fleet as code, across clusters.** Keep one Helm chart parameterized per model, applied from Git, as in [Helm charts and the observability stack](../../systems/10-containers-kubernetes/04-helm-charts-and-observability-stack.md) and [Cloud Native](../../systems/09-cloud-native/README.md) in *Systems Engineering*, and release model revisions through [ModelRelease](../../systems/07-durable-orchestration/12-model-release.md). One cluster is both a failure domain and a scaling ceiling, so large fleets run several, in more than one region, behind a global gateway that routes by health and latency and fails over between them.
 
 ## What to watch
 
@@ -325,6 +435,11 @@ Two metric sources together tell you what a model fleet is doing. The engine's `
 - **Autoscaling on GPU utilization, or without lead time.** It scales too late or not at all.
 - **TP that does not divide the node.** A TP=3 or TP=6 replica strands GPUs on 8-GPU nodes.
 - **Time-sliced engines at default memory utilization.** The second engine fails to start, or one OOMs the others.
+- **Proxy timeouts or a grace period shorter than the longest stream.** Long answers are cut off by a 15-second route timeout, or mid-stream on every rollout.
+- **The default five-minute toleration for an unreachable node.** A dead node's replicas are not even replaced for five minutes.
+- **Packing replicas to fill nodes.** One node becomes most of the fleet, and losing it breaches the SLO.
+- **A disaggregated pool of one.** Every request now depends on a single pod.
+- **Multi-pod groups without gang admission.** Half-scheduled groups hold GPUs and serve nothing.
 
 ## Where this leads
 
@@ -347,6 +462,9 @@ The capacity plan this section deploys comes from [Serving, Capacity & Load Test
 - **lead time**: the delay from an autoscaling decision to a replica serving traffic, including node provisioning and cold start.
 - **LeaderWorkerSet**: a Kubernetes workload that creates, restarts, and scales a multi-pod replica as one unit.
 - **endpoint picker**: a router that chooses a model-server pod per request from engine metrics, prefix affinity, and loaded adapters.
+- **failure domain**: the set of replicas lost together in one failure (a node, a zone, a cluster); the fleet is sized so the replicas outside the largest one still meet peak load.
+- **commit rule**: a request that fails before any byte reaches the client is retried elsewhere, and one that fails after is ended with an explicit error event.
+- **gang admission**: admitting all the pods of a multi-pod workload together or none of them, so partial groups never hold GPUs.
 
 ## Summary
 
@@ -354,7 +472,10 @@ The capacity plan this section deploys comes from [Serving, Capacity & Load Test
 - GPUs are integer, non-overcommitted resources that the scheduler counts but does not size, so model pods select their GPU model and GPU nodes are tainted.
 - Weights should reach nodes once, from a pinned revision, through a cache close to the GPU; serving pods never contact the Hub.
 - A model server needs a startup probe sized to its cold start, memory-backed shared memory, a drain period for streams, and a rollout strategy chosen against spare GPUs.
-- Autoscale on queue depth with lead time in mind; use LeaderWorkerSet for multi-node replicas, a metrics-aware router for prefixes and adapters, and separately sized pools for disaggregated prefill and decode.
+- Autoscale on queue depth with lead time in mind; use LeaderWorkerSet for multi-node replicas, a metrics-aware router for prefixes and adapters, and separately sized and separately scaled pools for disaggregated prefill and decode.
+- Every hop of a streaming request needs timeouts and a drain period longer than the longest generation, and overload is shed at the gateway rather than through readiness.
+- Size the fleet so the replicas outside the largest failure domain still meet peak load, shorten the unreachable-node toleration, spread replicas, and let the commit rule protect requests in flight.
+- At scale, give each model its own pool behind one gateway, use priority, quotas, and gang admission to share GPUs, reserve capacity for serving, and run more than one cluster.
 
 ## Review questions
 
@@ -370,3 +491,9 @@ The capacity plan this section deploys comes from [Serving, Capacity & Load Test
    <details><summary>Answer</summary>GPU utilization measures whether a kernel is running, not how much work is queued; it reads near 100% at batch 1 and at full batch alike. Scale on queue depth and KV utilization. The lead time is node provisioning (3 to 6 minutes), GPU Operator readiness (1 to 2), and the pod's cold start: often 6 to 12 minutes in total.</details>
 6. In the disaggregated sizing, the system prompt stops being cacheable. Which pool changes and by how much?
    <details><summary>Answer</summary>Uncached input rises from 500 to 2,000 tokens per request, so prefill demand goes from 10,000 to 40,000 tokens per second, about 5.7 GPUs instead of 1.4: the prefill pool grows about fourfold. Output is unchanged, so the decode pool stays at two instances. Independent scaling of the pools is the reason to disaggregate.</details>
+7. The worked fleet runs 5 replicas of 6 req/s goodput against a 20 req/s peak, packed four on one node and one on another. Does it survive losing a node, and what is the smallest layout on 8-GPU nodes that does?
+   <details><summary>Answer</summary>No. Losing the four-replica node leaves one replica, 6 req/s against 20. To survive any one node, $\lceil 20 / 6 \rceil = 4$ replicas must remain after the largest node goes. Three nodes with two TP=2 replicas each gives 6 replicas on 12 GPUs, and losing a node leaves $4 \times 6 = 24$ req/s. That is two more GPUs than the packed fleet, and the remaining 12 GPUs on those nodes can carry other work that yields to serving.</details>
+8. A product allows answers of up to 6,000 tokens. TPOT p99 is 50 ms and TTFT p99 is 800 ms. What should the route timeout and the termination grace period be, given a 15 s preStop sleep?
+   <details><summary>Answer</summary>The longest stream lasts about $6000 \times 0.05 + 0.8 \approx 301$ s. The HTTPRoute timeout, the load balancer's idle timeout, and the gateway's upstream timeout all go above that, say 330 s. The grace period counts the preStop sleep, so it needs at least $15 + 301 = 316$ s, say 330 s. The Deployment's 120 s would cut every answer longer than about 2,100 tokens on each rollout.</details>
+9. A GPU node loses power. Replicas take four minutes to cold-start and there are free GPUs elsewhere. Roughly when does a replacement serve traffic with the default tolerations, and with `tolerationSeconds: 30`?
+   <details><summary>Answer</summary>After the node controller marks the node `NotReady`, the default 300 s toleration must expire before the pod is evicted and recreated, then the 4-minute cold start runs: about nine minutes or more. With 30 s it is about four and a half minutes plus the detection delay. Either way, the spare capacity sized for a node loss carries the traffic in the meantime; the shorter toleration only shortens how long the fleet runs without its headroom.</details>
