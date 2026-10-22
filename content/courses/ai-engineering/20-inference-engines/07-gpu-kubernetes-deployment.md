@@ -53,6 +53,16 @@ Extended resources have three rules that shape everything else. A GPU request is
 
 That last rule is why model pods must name their hardware. GPU Feature Discovery labels nodes with keys such as `nvidia.com/gpu.product` (for example `NVIDIA-H100-80GB-HBM3`) and `nvidia.com/gpu.memory`; select on them. And taint GPU nodes, typically `nvidia.com/gpu=present:NoSchedule`, so that ordinary pods do not land on a node that costs tens of dollars an hour and take the CPU and memory a model pod needs. Model pods then carry the matching toleration.
 
+Follow one model pod from request to running engine to see where each piece acts. The components named here are introduced in [The control plane: who does what](../../systems/10-containers-kubernetes/README.md#the-control-plane-who-does-what) in *Systems Engineering*.
+
+1. **The device plugin advertises.** On each GPU node it reports a count, say `nvidia.com/gpu: 8`, to the kubelet, which publishes it in the node's status as allocatable capacity.
+2. **The pod asks.** Its container spec sets `nvidia.com/gpu: 2` in `limits` (and therefore in `requests`).
+3. **The scheduler filters and binds.** It drops every node with fewer than two unallocated GPUs, every node whose `nodeSelector` labels do not match, and every node whose taint the pod does not tolerate, scores what is left, and binds the pod to one node. Because a pod is never split across nodes, both GPUs come from the same machine.
+4. **The kubelet allocates.** When it starts the pod, it asks the device plugin for two specific devices. The plugin answers with the device nodes and environment the container runtime must expose, so the container sees exactly those two GPUs, numbered 0 and 1, and none of the other six.
+5. **The engine runs.** vLLM starts with `--tensor-parallel-size=2`, finds two visible GPUs, and its all-reduces run over the NVLink between them.
+
+When a pod is deleted, the kubelet returns its devices to the node's free pool, and the scheduler can bind the next pod to them.
+
 Two mechanisms share one physical GPU between pods, and they are not interchangeable:
 
 | | **MIG** (Multi-Instance GPU) | **Time-slicing** |
