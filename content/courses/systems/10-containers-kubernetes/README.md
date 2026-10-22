@@ -12,7 +12,7 @@ graph LR
     W --> C
 ```
 
-This chapter takes that idea from concept to a running platform. The opening pages lay out the model: what a container actually is, the handful of Kubernetes objects you use every day, the stateful-versus-stateless split that decides how a workload is run, the caveats where real outages live, and the three axes of scaling. The sections then apply it to a real system. You start with a tracer deployment, the smallest thing that streams a completion end to end on a kind cluster, and harden it step by step: reproducible images, a local registry, production Helm charts with the observability stack, a fast dev loop, CI, and finally the stateful durable server, autoscaled workers, and the agent worker.
+This chapter takes that idea from concept to a running platform. The opening pages lay out the model: what a container actually is, the handful of Kubernetes objects you use every day, the control-plane components that act on them, the stateful-versus-stateless split that decides how a workload is run, the caveats where real outages live, and the three axes of scaling. The sections then apply it to a real system. You start with a tracer deployment, the smallest thing that streams a completion end to end on a kind cluster, and harden it step by step: reproducible images, a local registry, production Helm charts with the observability stack, a fast dev loop, CI, and finally the stateful durable server, autoscaled workers, and the agent worker.
 
 > **Learning objectives**
 > - Explain a container as a namespaced, cgroup-limited process with a layered filesystem, and build small, reproducible, non-root images.
@@ -43,6 +43,7 @@ A small set of objects covers almost everything. Here is each one, what it gives
 |--------|-------------------|----------------|
 | **Pod** | One or more co-scheduled containers sharing network and storage (the smallest unit) | rarely created directly |
 | **Deployment** | Declarative replicas and rolling updates for **stateless** Pods | the `api` and `order-worker` |
+| **ReplicaSet** | Keeps exactly N identical Pods (replicas) alive; a Deployment owns one per revision | created for you, never by hand |
 | **StatefulSet** | Stable identity, a per-Pod persistent volume, ordered rollout | `kafka`, `postgres` |
 | **Service** | A stable virtual IP and DNS name, load-balancing across Pods | `api` ClusterIP, ingress LB |
 | **ConfigMap / Secret** | Externalized config and credentials (twelve-factor) | broker list, DB DSN |
@@ -52,6 +53,55 @@ A small set of objects covers almost everything. Here is each one, what it gives
 The C4 deployment view maps directly onto these objects:
 
 ![Streamflow on Kubernetes](diagrams/deployment-k8s.svg)
+
+## The control plane: who does what
+
+The objects above are records. Something has to read them and make the world match, and that something is a handful of processes split into two groups. The **control plane** decides; each **worker node** does the work. No component commands another directly: every one of them watches the API server and runs its own reconciliation loop.
+
+| Component | Runs on | Job |
+|-----------|---------|-----|
+| **API server** | control plane | The only front door. Authenticates, authorizes (RBAC), runs admission webhooks, and reads and writes objects. Every other component talks only to it. |
+| **etcd** | control plane | The consistent key-value store that holds every object, which is to say the desired state. Lose it without a backup and you lose the cluster. |
+| **Controller manager** | control plane | Runs the built-in controllers (Deployment, ReplicaSet, Job, node, EndpointSlice), each a reconciliation loop over one kind of object. |
+| **Scheduler** | control plane | Assigns each unscheduled Pod to a node: filters out nodes that cannot fit it, scores the rest, and writes the choice onto the Pod. |
+| **kubelet** | every node | Watches for Pods assigned to its node, starts their containers, runs their probes, and reports status back. |
+| **Container runtime** | every node | containerd (or CRI-O), which pulls images and starts the actual processes when the kubelet asks. |
+| **kube-proxy** | every node | Programs iptables, IPVS, or nftables rules so a Service's virtual IP reaches the ready Pods behind it. |
+| **Device plugins** | every node | Advertise hardware such as GPUs to the kubelet as countable extended resources. |
+
+`kubectl` is none of these. It is a client that turns your YAML into HTTPS calls to the API server, and its job ends there.
+
+The clearest way to see the split is to follow one command, `kubectl apply -f deployment.yaml` for a Deployment with three replicas:
+
+```mermaid
+sequenceDiagram
+    participant U as kubectl
+    participant A as API server
+    participant E as etcd
+    participant C as Controller manager
+    participant S as Scheduler
+    participant K as kubelet
+    U->>A: POST Deployment
+    A->>E: store Deployment
+    A-->>U: created (nothing runs yet)
+    C->>A: Deployment controller: create ReplicaSet
+    C->>A: ReplicaSet controller: create 3 Pods (no node)
+    S->>A: bind each Pod to a node
+    K->>A: watch: a Pod is assigned to me
+    K->>K: pull image, start containers, run probes
+    K->>A: Pod is Ready
+```
+
+1. **kubectl** POSTs the Deployment. The API server authenticates you, checks RBAC, runs admission webhooks, stores the object in etcd, and replies `created`. At this point nothing is running; you have only recorded an intent.
+2. **The Deployment controller** sees a Deployment with no ReplicaSet for its template and creates one.
+3. **The ReplicaSet controller** sees "want 3, have 0" and creates three Pod objects. They have no node yet, so they show as `Pending`.
+4. **The scheduler** sees unassigned Pods. For each, it filters out nodes without enough free CPU, memory, or extended resources, nodes whose taints the Pod does not tolerate, and nodes that fail its selectors or affinity, then scores the survivors and writes `nodeName` onto the Pod. If no node passes the filter, the Pod stays `Pending` and the Cluster Autoscaler may add one.
+5. **The kubelet** on that node sees a Pod assigned to it. It asks any device plugins for the extended resources the Pod requested, mounts volumes, and tells the container runtime to pull the image and start the containers.
+6. **The kubelet** runs the startup, readiness, and liveness probes and reports status. When readiness passes, the EndpointSlice controller adds the Pod to its Service, and **kube-proxy** on every node routes the Service's IP to it.
+
+Now kill one of the Pods. The ReplicaSet controller sees "want 3, have 2", creates a replacement, and the cycle runs again from step 4. A rolling update is the same loop one level up: the Deployment controller creates a second ReplicaSet for the new template and shifts the replica counts from old to new in steps, keeping the old ReplicaSet around so a rollback is just shifting them back.
+
+Everything you add later fits the same shape. An HPA or KEDA is a controller that edits a Deployment's `replicas`. The Cluster Autoscaler and Karpenter watch for `Pending` Pods and add nodes. Operators such as the NVIDIA GPU Operator, and workload types such as LeaderWorkerSet, define their own objects (Custom Resource Definitions) and ship a controller that reconciles them. Once you can name which loop owns a field, you can debug almost any "why isn't it doing what I said" by asking what that loop sees.
 
 ## Workloads: stateful versus stateless
 
@@ -143,6 +193,10 @@ The architecture principles from [Cloud Native](../09-cloud-native/) explain the
 ## Key terms
 
 - **Reconciliation loop / control loop**: a controller's endless cycle of observing actual state, diffing it against declared desired state, and acting to close the gap; every Kubernetes behavior follows from it.
+- **Control plane**: the API server, etcd, scheduler, and controller manager, which store desired state and decide what should run where; worker nodes carry out those decisions.
+- **Scheduler**: the control-plane component that binds each unscheduled Pod to a node by filtering out nodes that cannot fit it and scoring the rest.
+- **kubelet**: the agent on every node that starts the containers of Pods assigned to that node, runs their probes, and reports their status to the API server.
+- **ReplicaSet**: the controller-managed object that keeps a fixed number of identical Pods running; a Deployment creates one per template revision and shifts replicas between them during a rollout.
 - **Twelve-Factor App**: a set of principles that make a service orchestratable: config from the environment, stateless processes, logs to stdout, strict build/run separation, and disposability (fast startup, graceful shutdown).
 - **Resource requests and limits**: a container's `requests` are what the scheduler reserves for it and its `limits` are the hard cap; exceeding a memory limit kills the container, while exceeding a CPU limit only throttles it.
 - **OOMKilled**: the termination reason for a container killed for exceeding its memory limit (exit code 137); it is a kill, not a slowdown.
