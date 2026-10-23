@@ -12,10 +12,16 @@ This chapter builds that discipline in layers. It starts by separating the three
 > - Price a model switch against the prompt cache it abandons.
 > - Write an escalation policy that uses categories and verifiers on untrusted input and chooses its failure direction explicitly.
 > - Evaluate a router against the best single model, a random split at equal cost, and a simple rule, on whole sessions.
+> - Design provider adapters and cache-aware switching around an explicit application contract.
 
 ## Before you begin
 
 Routing is measured, so you need the harnesses and precision and recall from [LLM Evaluation](../29-evaluation/). The cost arguments depend on prefill, the KV cache, and prompt caching from [LLM Systems and Inference](../20-inference-engines/) in *AI Engineering*, and tuning the router uses SFT and LoRA from [Training and Frameworks](../16-training-frameworks/).
+
+## In this chapter
+
+1. [Routing foundations](#three-decisions-that-share-a-name). Model and provider selection, fallbacks, router families, oracle analysis, cache economics, escalation, and task-level evaluation.
+2. [Designing a model router across APIs, caches, and applications](01-router-api-cache-application-design.md). Capability contracts, provider adapters, portable state, cache changes, switching costs, and the boundary between application decisions and serving infrastructure.
 
 ## Three decisions that share a name
 
@@ -92,7 +98,7 @@ In agent workloads, early decisions change later inputs. A model that reads the 
 
 ## Cache-aware routing
 
-Granularity matters so much because of the prompt cache. Prompt caching bills previously seen prefix tokens at a reduced rate, and caches are per model and usually per provider. Switching models discards the cache and pays full prefill on the new one, so a model switch can cost more than it saves.
+Granularity matters so much because of the prompt cache. Prompt caching can bill previously seen prefix tokens at a reduced rate, with eligibility and scope determined by the model, provider, and deployment. Switching models does not carry the old cache into the new endpoint, so a cold switch can cost more than it saves. The old cache may remain reusable if you return before it expires; a switch does not necessarily delete it.
 
 Some illustrative arithmetic, with made-up round rates, shows how:
 

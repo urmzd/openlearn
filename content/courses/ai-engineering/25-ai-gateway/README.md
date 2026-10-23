@@ -17,6 +17,8 @@ The chapter builds the gateway in the order the request meets it. It starts with
 
 You should be comfortable reading Go; [Go: packages, interfaces, goroutines, channels, context, net/http, testing](../../programming-and-algorithms/01-language-primers/06-go.md) in *Programming and Algorithms* covers what the chapter uses. The wire format the gateway forwards is the subject of [Streaming and SSE](../../systems/04-streaming/README.md). The engine the gateway fronts, and its API, comes from [Your first endpoint](../23-model-serving/01-your-first-endpoint.md) in *AI Engineering*. The routing section draws on [Model routing and cascades](../24-model-routing/README.md) for the ideas behind cascades, and the gateway's spans and metrics feed [Observability](../../systems/11-observability/01-one-trace.md) in *Systems Engineering*.
 
+For routing across provider APIs, see [Designing a model router across APIs, caches, and applications](../24-model-routing/01-router-api-cache-application-design.md). It separates application task and tool decisions from provider selection, adapters, prompt caching, and worker scheduling; this chapter implements routing behind one compatible gateway surface.
+
 The full solution code for every section lives in [`course/solutions/go/gateway/`](../../../../course/solutions/go/gateway/).
 
 ## In this chapter
