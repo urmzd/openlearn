@@ -70,6 +70,11 @@
       "dir": "content/courses/software-engineering/12-documentation",
       "title": "Documentation Writing",
       "part": "Explain and document"
+    },
+    {
+      "dir": "content/courses/software-engineering/13-engineering-acronyms",
+      "title": "Engineering Acronyms",
+      "part": "Explain and document"
     }
   ],
   "reference": [

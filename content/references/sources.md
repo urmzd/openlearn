@@ -54,6 +54,18 @@ The same author describes *Designing Machine Learning Systems* as a companion fo
 | Data quality | [Data engineering](../courses/data-engineering/) | Provenance, deduplication and leakage checks |
 | Inference and application architecture | [LLM systems](../courses/ai-engineering/20-inference-engines/) | Quality, latency, throughput and cost under a stated workload |
 
+## Engineering acronyms
+
+References for [Engineering Acronyms](../courses/software-engineering/13-engineering-acronyms/README.md), checked 2026-10-25. The numerical scenarios in that chapter are teaching examples, not measurements of this project.
+
+| Primary source | Scope supported |
+|---|---|
+| Rust project, [The Rust RFC Book](https://rust-lang.github.io/rfcs/) | RFC proposals, discussion, acceptance, and implementation as distinct stages |
+| ADR GitHub organization, [Architectural Decision Records](https://adr.github.io/) | Recording a decision with rationale, tradeoffs, and consequences |
+| Google re:Work, [Set goals with OKRs](https://rework.withgoogle.com/intl/en/guides/set-goals-with-okrs) | Objectives and measurable key results; goals are more than a task list |
+| Chris Jones, John Wilkes, Niall Murphy, and Cody Smith, [Service Level Objectives](https://sre.google/sre-book/service-level-objectives/), *Site Reliability Engineering*, chapter 4 | Distinguishing SLIs, SLOs, and SLAs; defining measurements and agreement consequences |
+| AWS Well-Architected Reliability Pillar, [Disaster Recovery objectives](https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/disaster-recovery-dr-objectives.html) | RTO as acceptable restoration delay and RPO as acceptable data loss expressed in time |
+
 ## Cross-validation protocol
 
 For future source additions, capture: stable source URL, title, authors, edition/date, access category, topic, prerequisite, specific claim or learning outcome, check date, and reviewer. For technical claims, record a section/page or named result and assumptions. Independently recompute quantitative examples or compare with an independent implementation. Two model answers agreeing is not independent evidence when both repeat the same source.
