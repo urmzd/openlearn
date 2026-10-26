@@ -13,5 +13,8 @@ Develop habits for designing, testing, reviewing, and maintaining software.
 - [Releases and Deprecation](../07-releases-and-deprecation/README.md)
 - [Maintenance](../08-maintenance/README.md)
 - [Security](../09-security/README.md)
+- [Engineering Acronyms](../13-engineering-acronyms/README.md)
 
 Begin with principles and testing. Then follow a real change through review, release, migration, and maintenance. Explain which invariant each test checks and what remains unvalidated.
+
+Use Engineering Acronyms as a companion throughout this route. Start with RFC, ADR, OKR, and SLO, then use the scenario questions to check whether you can choose the right document or measurement.
