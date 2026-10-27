@@ -4,7 +4,7 @@ The [byte bigram](../../ai-engineering/06-numerics-and-autograd/01-byte-bigram.m
 
 Each of those needs the same three decisions made correctly: what the best estimate from counts is, how much probability to keep for what was not seen, and where that probability goes. This section makes those decisions once, as functions with exact answers. You will prove that the observed frequency is the maximum-likelihood estimate, see why it fails on unseen outcomes, and build the two classical repairs: add-alpha smoothing and absolute discounting, the core of Kneser-Ney.
 
-No code from earlier sections is needed. The reading background is natural logs and nats from [Exponents, logs, and units of information](../06-precalculus/01-exponents-logs-and-units-of-information.md) and counting from the [Discrete math 1 problem set](../11-discrete-math-1/03-problem-set.md). The reference implementation is [`course/solutions/python/tinyllm/prob/mle.py`](../../../../course/solutions/python/tinyllm/prob/mle.py), with its contract in [`mle.pyi`](../../../../course/contracts/py/tinyllm/prob/mle.pyi).
+No code from earlier sections is needed. The reading background is natural logs and nats from [Exponents, logs, and units of information](../06-precalculus/01-exponents-logs-and-units-of-information.md) and counting from the [Discrete math 1 problem set](../11-discrete-math-1/03-problem-set/README.md). The reference implementation is [`course/solutions/python/tinyllm/prob/mle.py`](../../../../course/solutions/python/tinyllm/prob/mle.py), with its contract in [`mle.pyi`](../../../../course/contracts/py/tinyllm/prob/mle.pyi).
 
 > **Learning objectives**
 > - Prove that $c_k / N$ maximizes the log-likelihood of a categorical distribution, using the KL divergence.

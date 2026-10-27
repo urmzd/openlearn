@@ -8,7 +8,7 @@ This section derives each piece of the GRPO objective from what a policy-gradien
 > - Compute within-group normalized advantages and explain why the baseline must be per prompt.
 > - Evaluate the clipped surrogate objective by hand and explain why it takes the minimum.
 > - Implement the GRPO loss stably, with a floored KL penalty.
-> - Explain why a group with equal rewards produces no update, and what that implies for prompt difficulty.
+> - Explain why equal rewards produce zero centered policy advantages, and distinguish that from a KL-driven update.
 
 ## The objective
 
@@ -24,23 +24,23 @@ With identical rewards the centered advantages are zero, so the policy term and 
 
 ## Why each piece is there
 
-**A policy gradient needs a baseline.** The REINFORCE gradient $\mathbb{E}[r\, \nabla \log \pi(y)]$ is unbiased for any baseline subtracted from $r$, and a good baseline cuts its variance. PPO learns a value function for this; GRPO samples several completions for the same prompt and uses their mean reward, which needs no extra network.
+**A policy gradient can use a baseline to reduce variance.** Subtracting an action-independent baseline preserves the expected REINFORCE gradient. GRPO uses a sampled group mean; because that mean includes the current sample, the resulting estimator is not covered by the action-independent guarantee. Group standard-deviation normalization adds further weighting effects. See [the finite-group analysis](08-rollout-systems-and-grpo-variants.md#group-size-and-the-baseline). PPO commonly learns a value baseline, while GRPO avoids that learned critic.
 
 **The baseline must be per prompt.** Prompts differ in difficulty. Normalizing across prompts would make every completion of an easy prompt look good and every completion of a hard prompt look bad, regardless of which completion was better. So advantages are computed group by group.
 
-**Dividing by the standard deviation makes the step size reward-scale free.** A group with rewards in $\{0, 1\}$ and one with rewards in $\{0, 100\}$ then produce updates of the same size. The $\varepsilon$ keeps an all-equal group (std 0) at advantage 0 instead of $0/0$.
+**Dividing by the standard deviation normalizes advantage scale within a group.** Scaling rewards by a positive constant gives approximately the same advantages when $\varepsilon$ is negligible. This does not guarantee an invariant optimizer step or balance against the KL term. The $\varepsilon$ keeps an all-equal group (std 0) at advantage 0 instead of $0/0$.
 
 **Samples were drawn from the old policy, so the update uses an importance ratio.** $q = \pi_{\text{new}}/\pi_{\text{old}} = \exp(\log p_{\text{new}} - \log p_{\text{old}})$ reweights each sample to the current policy.
 
 **Large ratios make the estimate unreliable, so the objective is clipped.** Taking the minimum of the raw and the clipped term gives a pessimistic bound: the objective never rewards pushing $q$ beyond $1 \pm \varepsilon_c$ in the direction the advantage favours, so the gradient there is zero, while moves in the harmful direction are never hidden by the clip.
 
-**The KL term keeps the policy near the reference.** It is a penalty added to the loss, weighted by $\beta$. A KL estimate is nonnegative in expectation, so negative per-sample estimates are floored at zero.
+**The KL term penalizes drift from the reference.** The toy API floors its supplied penalty entries at zero, but this is not a generally unbiased KL estimator. A signed log-ratio sample can be negative even when its expectation is nonnegative; flooring it changes that expectation. The original GRPO recipe uses the pointwise nonnegative estimator $k_3=e^{-d}+d-1$, where $d=\log\pi_\theta-\log\pi_{\mathrm{ref}}$. Its expectation equals forward KL when actions are sampled from the current policy with matching support; old-policy samples require the recipe's stated correction or approximation. Keep this distinction when replacing the toy penalty with a real training objective.
 
 ## Working it by hand
 
 **Advantages.** Rewards $[0, 1, 1]$ have mean $2/3$ and (population) standard deviation $\sqrt{2/9} \approx 0.471$. The advantages are $(-2/3)/0.471 \approx -1.414$ and $(1/3)/0.471 \approx 0.707$ twice: one negative and two positive values, summing to zero. If all three rewards equal 1, every advantage is zero and the policy gradient vanishes.
 
-**The clipped objective.** Take two samples with $\log p_{\text{old}} = 0$ and $\log p_{\text{new}} = [\log 2, \log 0.5]$ (ratios 2 and 0.5), advantages $[1, -1]$, no KL, and $\varepsilon_c = 0.2$:
+**The clipped objective.** Take two samples with $\log p_{\text{old}} = \log 0.25$ and $\log p_{\text{new}} = [\log 0.5, \log 0.125]$ (ratios 2 and 0.5), advantages $[1, -1]$, no KL, and $\varepsilon_c = 0.2$:
 
 | sample | ratio $q$ | $qA$ | $\mathrm{clip}(q)A$ | min |
 |---|---|---|---|---|
@@ -51,7 +51,7 @@ The mean objective is $(1.2 - 0.8)/2 = 0.2$, so the loss is $-0.2$. Both samples
 
 ## Designing the API
 
-`group_advantages(rewards, eps=1e-8)` takes one prompt's group of rewards (a non-empty vector) and returns its normalized advantages. `grpo_loss(logp_new, logp_old, advantages, kl, beta=0.0, clip=0.2)` takes equal-shaped arrays (one entry per sampled completion or token) and returns the scalar loss to minimize. The rollouts themselves come from the serving engine with its sampler; the caller records each rollout's seed and policy revision so that `logp_old` is reproducible and a run can be replayed.
+`group_advantages(rewards, eps=1e-8)` takes one prompt's group of rewards (a non-empty vector) and returns its normalized advantages. `grpo_loss(logp_new, logp_old, advantages, kl, beta=0.0, clip=0.2)` takes equal-shaped arrays (one entry per sampled completion or token) and returns the scalar loss to minimize. The rollouts come from the serving engine. Record actual behavior log probabilities, policy revision, seed, tokenizer/template, sampling transforms, and numerical execution settings. A seed and weight revision alone do not establish replay or equality with the learner's scoring path.
 
 ## Building it step by step
 
@@ -85,13 +85,13 @@ def grpo_loss(logp_new, logp_old, advantages, kl, beta=0.0, clip=0.2):
     return float(-objective.mean() + beta * np.maximum(k, 0.0).mean())
 ```
 
-With all advantages zero, both terms inside the minimum are zero for every ratio, so the loss is constant in `logp_new` and its gradient is zero; that is the equal-reward boundary. The full solution is [`grpo.py`](../../../../course/solutions/python/tinyllm/post/grpo.py).
+With all advantages zero, the policy surrogate is zero for every ratio. In this scalar helper, holding the supplied `kl` array fixed makes the result constant in `logp_new`; a real differentiable KL penalty can still produce an update. This helper returns a NumPy scalar, so it checks loss arithmetic rather than implementing an autograd training loop. The full solution is [`grpo.py`](../../../../course/solutions/python/tinyllm/post/grpo.py).
 
 ### Why this design
 
 Both functions are linear in the number of samples. The real cost of GRPO is the rollouts: $G$ completions per prompt, each a full generation.
 
-The group baseline replaces a value network. A learned critic is a second model of the same size, trained alongside, with its own bias. The group mean is unbiased for that prompt and free, at the price of sampling several completions per prompt and getting no signal from a group whose rewards are all equal. The clipped minimum replaces a pure KL trust region, which would need a second-order step or a tuned penalty; the clip is one line and caps the per-sample incentive directly. And verifiable rewards replace a reward model: a checker (exact answer, valid format) cannot be gradient-hacked the way a learned reward can, but it only exists for tasks with checkable answers.
+The group baseline avoids learning a value network; critics can otherwise use a separate backbone or a shared value head. The mean estimates expected prompt reward, but including each sample in its own baseline and normalizing by sampled spread affects the policy-gradient estimator. Sampling groups costs additional generation. The clipped minimum changes the sampled surrogate incentive; it does not enforce a hard KL trust region. A checker can replace a learned reward model on checkable tasks, but parser bugs, incomplete tests, and format-only rewards can still be exploited. [Reward design](07-rewards-and-preference-models.md) shows how to test that boundary.
 
 ## What can go wrong
 
@@ -99,16 +99,16 @@ Three checks pin the implementation: the worked clipped objective must give $-0.
 
 > **Warning:** Normalizing rewards across unrelated prompts leaks prompt difficulty into the advantage. `group_advantages` accepts one prompt's 1-D group only.
 
-The other classic mistake is omitting clipping from the policy objective, which lets a single sample with a large ratio dominate the update; `grpo_loss` takes the minimum with the clipped ratio term. Finally, record rollouts and their seeds: without the policy revision that produced each sample, `logp_old` cannot be recomputed and a run cannot be reproduced.
+The other classic mistake is omitting clipping from the policy objective, which lets a single sample with a large ratio dominate the update; `grpo_loss` takes the minimum with the clipped ratio term. Finally, keep immutable behavior probabilities with each rollout. Policy revision, sampling transforms, and numerical configuration are needed to interpret or attempt to reproduce them.
 
 ## Where this leads
 
-The [post-trained capstone](../capstones/02-post-trained.md) runs verifiable-reward training after SFT and DPO and reports reward, KL, clip fraction, and rollout revision. The next section, [Distillation with forward and reverse KL](04-distillation.md), offers an alternative recipe that learns from a teacher's distribution instead of from rewards. Production systems add asynchronous rollout pools, for more throughput with explicit rollout revisions, and calibrated rewards with tool execution, validated against reward hacking and distribution shift. Policy gradients and PPO are covered in depth in the [Reinforcement Learning](../04-reinforcement-learning/README.md) chapter of *AI Engineering*.
+The [post-trained capstone](../capstones/02-post-trained.md) runs verifiable-reward training after SFT and DPO and reports reward, KL, clip fraction, and rollout revision. The next section, [Distillation with forward and reverse KL](04-distillation.md), offers an alternative recipe that learns from a teacher's distribution instead of from rewards. Production systems add asynchronous rollout pools, for more throughput with explicit rollout revisions, and calibrated rewards with tool execution, validated against reward hacking and distribution shift. The worked [PPO and GAE section](06-ppo-with-gae.md) derives the critic-based alternative; [rollout systems and GRPO variants](08-rollout-systems-and-grpo-variants.md) adds token masks, length weighting, lag, and production diagnostics.
 
 ### Further reading
 
-- Shao et al., *DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models* (2024), which introduces GRPO.
-- Schulman et al., *Proximal Policy Optimization Algorithms* (2017).
+- Shao et al., [*DeepSeekMath*, section 4.1](https://arxiv.org/html/2402.03300v3#S4), which introduces GRPO.
+- Schulman et al., [*Proximal Policy Optimization Algorithms*](https://arxiv.org/abs/1707.06347) (2017).
 
 ## Key terms
 
@@ -123,7 +123,7 @@ The [post-trained capstone](../capstones/02-post-trained.md) runs verifiable-rew
 - Normalize rewards within each prompt's sampled group; the group mean is a free, per-prompt baseline.
 - Dividing by the group's standard deviation makes the step size independent of the reward scale.
 - Clip the probability ratio and take the pessimistic minimum to limit each update.
-- Verifiable rewards can be checked without a learned reward model, but groups with all-equal rewards carry no signal.
+- Verifiable rewards can be checked without a learned reward model. Equal-reward groups carry no centered policy signal; KL or other objectives can still update them.
 - Record rollouts and seeds so a run can be reproduced.
 
 ## Review questions
@@ -144,11 +144,11 @@ The [post-trained capstone](../capstones/02-post-trained.md) runs verifiable-rew
 
    </details>
 
-3. Why does a group with all rewards equal produce no update, and is that a bug?
+3. Why does a group with all rewards equal produce zero policy advantages, and can the model still update?
 
    <details><summary>Answer</summary>
 
-   Every advantage is $0/(0 + \varepsilon) = 0$, so the objective is zero for every policy. It is correct: the group carries no information about which completion is better. It is also why GRPO needs prompts of the right difficulty, where some but not all completions succeed.
+   Every advantage is $0/(0 + \varepsilon) = 0$, so the clipped policy term is zero. A reference-KL penalty or other loss can still update the model. The group itself supplies no relative outcome signal, motivating prompts with a useful range of sampled outcomes.
 
    </details>
 
@@ -156,6 +156,6 @@ The [post-trained capstone](../capstones/02-post-trained.md) runs verifiable-rew
 
    <details><summary>Answer</summary>
 
-   A large log-ratio would overflow `exp` to `inf`, and `inf * 0` advantage is NaN. At $\pm 60$ the ratio is already far outside $1 \pm \varepsilon_c$, so the clipped term decides the value anyway.
+   A large log-ratio can overflow `exp`, and `inf * 0` is NaN. The helper clamps the log difference as a numerical guard. This is an additional approximation: the raw term still controls harmful moves, such as a negative advantage with a very large ratio, so clamping can change the loss and gradient. A real learner should diagnose extreme ratios rather than silently treating this guard as exact PPO clipping.
 
    </details>

@@ -13,7 +13,7 @@ The arc is bottom-up. You start with the one function everything else calls, sca
 
 ## Before you begin
 
-You should have the attention mechanisms of [Attention Origins](../10-attention/README.md) in hand, especially [Luong attention](../10-attention/03-luong-attention-input-feeding.md) and [beam search](../10-attention/04-beam-search.md), and the `Tensor`, op library, and layers of the [foundations chapter](../06-numerics-and-autograd/README.md). From *Mathematics*, the sections that matter most are the logic in the [discrete math 1 problem set](../../mathematics/11-discrete-math-1/03-problem-set.md), the VJP derivations in the [matrix calculus problem set](../../mathematics/14-matrix-calculus-and-autodiff/05-problem-set.md), and the rotations and frequency ladders of [Precalculus](../../mathematics/06-precalculus/README.md).
+You should have the attention mechanisms of [Attention Origins](../10-attention/README.md) in hand, especially [Luong attention](../10-attention/03-luong-attention-input-feeding.md) and [beam search](../10-attention/04-beam-search.md), and the `Tensor`, op library, and layers of the [foundations chapter](../06-numerics-and-autograd/README.md). From *Mathematics*, the sections that matter most are the logic in the [discrete math 1 problem set](../../mathematics/11-discrete-math-1/03-problem-set/README.md), the VJP derivations in the [matrix calculus problem set](../../mathematics/14-matrix-calculus-and-autodiff/05-problem-set.md), and the rotations and frequency ladders of [Precalculus](../../mathematics/06-precalculus/README.md).
 
 ## In this chapter
 

@@ -4,7 +4,7 @@ A benchmark run **for a customer** is not the same thing as a benchmark run for 
 
 A customer benchmark answers one question: **at their traffic shape, how much load meets their SLO, and at what cost?** Anything else is a demo. This chapter shows how to answer that question honestly. You will agree the question in writing, build the workload from the customer's logs, pick the right load model, keep the runs clean, measure from where the customer's users are, compare fairly against the incumbent provider, and write a report that leads with curves and goodput under the SLO rather than a single headline number.
 
-The load-testing math and tools are developed in [Serving & Load section 8](../../ai-engineering/20-inference-engines/04-serving-and-load/#8-load-testing-methodology) in *AI Engineering*; this chapter is about running that method with and for a customer. In practice an FDE usually leads, an SE runs pre-sales smoke tests, and the performance team reviews anything that will be quoted in a contract.
+The load-testing math and tools are developed in [Serving & Load section 8](../../ai-engineering/20-inference-engines/04-serving-and-load/06-load-tests-and-deployment-runbook.md#load-testing-methodology) in *AI Engineering*; this chapter is about running that method with and for a customer. In practice an FDE usually leads, an SE runs pre-sales smoke tests, and the performance team reviews anything that will be quoted in a contract.
 
 > **Learning objectives**
 > - Write the benchmark question as one signed-off sentence that names the SLO, the comparison, and what is out of scope.
@@ -126,7 +126,7 @@ $$
 \text{cost per 1M tokens} = \frac{\text{GPU \$/hr} \times \text{GPUs}}{\text{tok/s} \times 3600} \times 10^6
 $$
 
-The full cost model is in [Commercials and Security](../06-commercials-and-security/README.md). Finally, keep **the bound and the measurement** apart: quote the measured number, and explain the roofline bound only as a ceiling ([Serving & Load section 8](../../ai-engineering/20-inference-engines/04-serving-and-load/#8-load-testing-methodology)).
+The full cost model is in [Commercials and Security](../06-commercials-and-security/README.md). Finally, keep **the bound and the measurement** apart: quote the measured number, and explain the roofline bound only as a ceiling ([Serving & Load section 8](../../ai-engineering/20-inference-engines/04-serving-and-load/06-load-tests-and-deployment-runbook.md#load-testing-methodology)).
 
 ### Tools
 

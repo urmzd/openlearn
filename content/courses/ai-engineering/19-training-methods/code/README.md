@@ -4,6 +4,7 @@ These are standalone, runnable files for the [Training and Post-Training](../REA
 
 | File | Chapter section | What it shows | Dependencies |
 |------|-----------------|---------------|--------------|
+| [`learning_checks.py`](learning_checks.py) | Learning signals, PPO/GAE, GRPO, distillation, and inference numerics | Worked loss/advantage calculations, clipping sign cases, terminal/truncation masks, importance correction, finite-group baseline bias, KL direction, KV accounting, and floating-point batch effects | stdlib only |
 | [`memory_calc.py`](memory_calc.py) | The mathematics of pretraining; Memory and parallelism; Parameter-efficient fine-tuning; Scoping a fine-tune | Parameter count from architecture, training memory (full FT vs LoRA vs QLoRA), `6ND` vs `4ND` FLOPs, GPU-hours, the 8B-on-15T pretraining estimate | stdlib only |
 | [`lora_from_scratch.py`](lora_from_scratch.py) | Parameter-efficient fine-tuning | LoRA `W0 + (alpha/r) B A` on a frozen 2-layer MLP: `B = 0` init equals the base model, manual backprop with a finite-difference check, Adam on adapters only, merge equals unmerged | numpy |
 | [`dpo_loss.py`](dpo_loss.py) | Post-training | DPO loss and gradient through per-token log-softmax, checked against central finite differences; loss is exactly `log 2` at policy = reference | numpy |
@@ -15,6 +16,7 @@ These are standalone, runnable files for the [Training and Post-Training](../REA
 The calculator needs only the standard library; the others run cleanly under `uv` with their dependencies supplied on the command line:
 
 ```bash
+python learning_checks.py
 python memory_calc.py
 python memory_calc.py --preset 70b --tokens 50e6 --rank 32 --gpu h200
 

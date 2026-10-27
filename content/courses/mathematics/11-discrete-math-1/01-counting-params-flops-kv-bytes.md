@@ -4,7 +4,7 @@ In *AI Engineering*, [the modern-block chapter](../../ai-engineering/13-decoder-
 
 Does the model have the same parameters as theirs? The `{tinyllm} info` command must report exactly what Hugging Face's `num_parameters()` reports, and a missing norm or a double-counted tied head is off by thousands or by 28 million. How many bytes of KV cache does one generated token cost? The Rust serving engine admits requests by exactly this number ([Continuous batching scheduler with priority and preemption](../../ai-engineering/23-model-serving/03-continuous-batching.md)). Will a training run fit in a laptop's memory? The [TinyStories capstone](../../ai-engineering/capstones/01-tinystories.md) picks its model size from that answer. This section answers all three by counting.
 
-No code from earlier sections is needed. You will use powers and logs for orders of magnitude from [Exponents, logarithms, and units of information](../06-precalculus/01-exponents-logs-and-units-of-information.md), and the product and sum rules, which [this chapter's problem set](03-problem-set.md) practices on paper. The solution is [`accounting.py`](../../../../course/solutions/python/tinyllm/accounting.py), with `ModelConfig`, `param_count`, `flops_per_token`, `kv_bytes_per_token`, and `memory_plan`; the typed interface is [`course/contracts/py/tinyllm/accounting.pyi`](../../../../course/contracts/py/tinyllm/accounting.pyi).
+No code from earlier sections is needed. You will use powers and logs for orders of magnitude from [Exponents, logarithms, and units of information](../06-precalculus/01-exponents-logs-and-units-of-information.md), and the product and sum rules, which [this chapter's problem set](03-problem-set/README.md) practices on paper. The solution is [`accounting.py`](../../../../course/solutions/python/tinyllm/accounting.py), with `ModelConfig`, `param_count`, `flops_per_token`, `kv_bytes_per_token`, and `memory_plan`; the typed interface is [`course/contracts/py/tinyllm/accounting.pyi`](../../../../course/contracts/py/tinyllm/accounting.pyi).
 
 > **Learning objectives**
 > - Count a decoder's parameters per component from its config, exactly matching Hugging Face for dense, GQA, MoE, and MLA models.
@@ -331,7 +331,7 @@ Every pitfall here produces a plausible number, which is what makes them dangero
 
 ## Where this leads
 
-This section draws on powers of ten and logs for reading counts like $6.7 \times 10^9$ ([Exponents, logarithms, and units of information](../06-precalculus/01-exponents-logs-and-units-of-information.md)) and on the product and sum rules practiced in [this chapter's problem set](03-problem-set.md). Its functions are used throughout *AI Engineering*:
+This section draws on powers of ten and logs for reading counts like $6.7 \times 10^9$ ([Exponents, logarithms, and units of information](../06-precalculus/01-exponents-logs-and-units-of-information.md)) and on the product and sum rules practiced in [this chapter's problem set](03-problem-set/README.md). Its functions are used throughout *AI Engineering*:
 
 - In [Grouped-Query Attention with a Cache Hook, Windows, and Sinks](../../ai-engineering/13-decoder-block/05-gqa-attention.md), the bytes the attention layer hands its cache must equal `kv_bytes_per_token`.
 - In [Multi-head latent attention](../../ai-engineering/13-decoder-block/06-multi-head-latent-attention.md), the MLA latent cache must cost exactly `kv_bytes_per_token` with `attn="mla"`.

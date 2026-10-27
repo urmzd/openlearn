@@ -67,7 +67,7 @@ Now the weights. Each worker iterates over the safetensors shards: memory-mapped
 2. **Calls the parameter's `weight_loader`**, which cuts out this rank's rows or columns and copies them into the right offset of the (possibly fused) parameter. A column-parallel weight $W \in \mathbb{R}^{\text{out} \times \text{in}}$ keeps rows $[r \cdot \text{out}/t, (r+1) \cdot \text{out}/t)$; a row-parallel one keeps the same range of columns.
 3. **Discards** the rest. The other rank keeps the other half of the same tensor.
 
-Afterwards, a post-processing pass prepares quantized weights for their kernels (repacking for Marlin, for example). [Model Loading](03-model-loading/README.md#how-serving-engines-load) shows the mapping and slicing code. When this stage is the slow one, the bottleneck is the storage the files come from, which [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment.md) addresses.
+Afterwards, a post-processing pass prepares quantized weights for their kernels (repacking for Marlin, for example). [Model Loading](03-model-loading/02-downloads-loaders-and-sharding.md#how-serving-engines-load) shows the mapping and slicing code. When this stage is the slow one, the bottleneck is the storage the files come from, which [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment/README.md) addresses.
 
 ### 5. Profile memory and allocate the KV cache
 
@@ -81,7 +81,7 @@ $$\text{blocks} = \frac{\text{KV memory per GPU}}{\text{block size} \times \text
 
 For Llama-3.1-8B in BF16 on one 80 GiB H100 at `util = 0.90`, the KV memory is about 55 GiB and each token takes $2 \times 32 \times 8 \times 128 \times 2 = 128$ KiB, so a block of 16 tokens is 2 MiB and the engine allocates about 28,000 blocks, room for about 450,000 tokens across all requests. vLLM prints this at startup as the KV cache size in tokens and the maximum concurrency at `max_model_len`. Every rank allocates the same number of blocks, each holding its own KV heads, so one block id means the same tokens on every GPU, and the scheduler can manage them all with one table.
 
-If this number is too small for even one sequence of `max_model_len`, startup fails here with an error asking you to raise `util` or lower `max_model_len`. That is the memory budget from [Serving, Capacity & Load Testing](04-serving-and-load/README.md#the-memory-budget) enforced by the engine.
+If this number is too small for even one sequence of `max_model_len`, startup fails here with an error asking you to raise `util` or lower `max_model_len`. That is the memory budget from [Serving, Capacity & Load Testing](04-serving-and-load/02-memory-budget-and-slos.md#the-memory-budget) enforced by the engine.
 
 ### 6. Compile and capture
 
@@ -162,7 +162,7 @@ Both are fast for most workloads, and they adopt each other's ideas quickly. Cho
 
 ## Where this leads
 
-The stages of startup are the cold-start terms in [Model Loading](03-model-loading/README.md#cold-start-math), and the step loop is the step-time equation in [Serving, Capacity & Load Testing](04-serving-and-load/README.md). Running the engine as a fleet is [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment.md), and producing a checkpoint that passes stages 1 and 4 cleanly is [From Training Run to Shared Model](08-train-publish-share.md). To build every component yourself, follow [Serving](../23-model-serving/README.md) in *AI Engineering*.
+The stages of startup are the cold-start terms in [Model Loading](03-model-loading/03-cold-start-and-tokenizers.md#cold-start-math), and the step loop is the step-time equation in [Serving, Capacity & Load Testing](04-serving-and-load/README.md). Running the engine as a fleet is [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment/README.md), and producing a checkpoint that passes stages 1 and 4 cleanly is [From Training Run to Shared Model](08-train-publish-share.md). To build every component yourself, follow [Serving](../23-model-serving/README.md) in *AI Engineering*.
 
 ### Further reading
 

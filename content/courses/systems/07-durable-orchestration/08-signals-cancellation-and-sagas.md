@@ -30,7 +30,7 @@ The table below follows one cancellation from the operator's call to the closed 
 | Step | Who | What is appended |
 |---|---|---|
 | `CancelWorkflow` | operator, CLI | `WorkflowExecutionCancelRequested`, and `ActivityTaskCancelRequested` for every activity pending right now (plus `ActivityTaskCanceled` for a dead-lettered one, which no attempt can acknowledge) |
-| next heartbeat of a pending activity | worker | nothing: the answer says `cancel_requested`, the worker cancels the attempt's context, the subprocess runner sends SIGTERM ([Subprocess activities](09-subprocess-activities.md)) |
+| next heartbeat of a pending activity | worker | nothing: the answer says `cancel_requested`, the worker cancels the attempt's context, the subprocess runner sends SIGTERM ([Subprocess activities](09-subprocess-activities/README.md)) |
 | next workflow task | workflow | every blocking `Runtime` call returns an error wrapping `ErrCanceled`; the workflow compensates |
 | `CancelWorkflowExecution` command | workflow | `WorkflowExecutionCanceled`: the run is `CANCELED` |
 

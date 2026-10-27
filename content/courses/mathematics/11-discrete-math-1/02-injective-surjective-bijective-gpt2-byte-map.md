@@ -4,7 +4,7 @@ Until the tokenizers chapter of *AI Engineering*, the system's tokenizer is the 
 
 The fix is a fixed bijection between the 256 byte values and 256 visible characters, the one GPT-2 introduced. This section derives that bijection, together with the three definitions (injective, surjective, bijective) that prove it can be inverted. It is a small piece of discrete math with an unusually concrete payoff: get one range boundary wrong and no real vocabulary loads.
 
-No code from earlier sections is needed; the functions and bijections problems in [this chapter's problem set](03-problem-set.md) are good preparation. The solution is [`bytes_unicode.py`](../../../../course/solutions/python/tinyllm/tok/bytes_unicode.py), with `is_injective`, `is_surjective`, `inverse`, `bytes_to_unicode`, `unicode_to_bytes`, `encode_bytes`, and `decode_chars`; the typed interface is [`course/contracts/py/tinyllm/tok/bytes_unicode.pyi`](../../../../course/contracts/py/tinyllm/tok/bytes_unicode.pyi).
+No code from earlier sections is needed; the functions and bijections problems in [this chapter's problem set](03-problem-set/README.md) are good preparation. The solution is [`bytes_unicode.py`](../../../../course/solutions/python/tinyllm/tok/bytes_unicode.py), with `is_injective`, `is_surjective`, `inverse`, `bytes_to_unicode`, `unicode_to_bytes`, `encode_bytes`, and `decode_chars`; the typed interface is [`course/contracts/py/tinyllm/tok/bytes_unicode.pyi`](../../../../course/contracts/py/tinyllm/tok/bytes_unicode.pyi).
 
 > **Learning objectives**
 > - Decide whether a finite function is injective, surjective onto a given codomain, or bijective, and say exactly what each check inspects.
@@ -43,7 +43,7 @@ $f$ is **bijective** when it is both. Then every $b \in B$ has exactly one preim
 
 ## Counting settles it for equal sizes
 
-For finite sets there is a shortcut. If $f$ is injective, its image has exactly $\lvert A \rvert$ elements, one per input. So when $\lvert A \rvert = \lvert B \rvert$, an injective $f$ hits all of $B$ and is also surjective. Conversely, a surjective $f$ needs at least $\lvert B \rvert$ distinct outputs, which uses up all $\lvert A \rvert$ inputs with no repeats; that is the pigeonhole principle, which the [problem set](03-problem-set.md) practices. For finite sets of equal size the three properties coincide: 256 bytes with 256 distinct outputs is a bijection onto those 256 outputs.
+For finite sets there is a shortcut. If $f$ is injective, its image has exactly $\lvert A \rvert$ elements, one per input. So when $\lvert A \rvert = \lvert B \rvert$, an injective $f$ hits all of $B$ and is also surjective. Conversely, a surjective $f$ needs at least $\lvert B \rvert$ distinct outputs, which uses up all $\lvert A \rvert$ inputs with no repeats; that is the pigeonhole principle, which the [problem set](03-problem-set/README.md) practices. For finite sets of equal size the three properties coincide: 256 bytes with 256 distinct outputs is a bijection onto those 256 outputs.
 
 ## Why GPT-2 needs a byte map
 
@@ -261,7 +261,7 @@ Several of these mistakes still produce a valid bijection, just not GPT-2's, whi
 
 ## Where this leads
 
-The functions, inverses, and pigeonhole problems in [this chapter's problem set](03-problem-set.md) are the pen-and-paper side of this section. In *AI Engineering*, the byte map is used throughout the tokenizer and decoding code:
+The functions, inverses, and pigeonhole problems in [this chapter's problem set](03-problem-set/README.md) are the pen-and-paper side of this section. In *AI Engineering*, the byte map is used throughout the tokenizer and decoding code:
 
 - [The tokenizer protocol and the char tokenizer](../../ai-engineering/07-tokenizers/01-tokenizer-protocol-and-char.md): every byte-level tokenizer decodes ids through `decode_chars`.
 - [Byte-level BPE](../../ai-engineering/07-tokenizers/02-byte-level-bpe.md): pre-tokenized text is encoded to UTF-8, mapped with `encode_bytes`, merged, and looked up in `vocab.json`; the Hugging Face loader reads `Ġ`-keys with `unicode_to_bytes`.

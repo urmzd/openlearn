@@ -28,7 +28,7 @@ The direction decides whose probabilities weight the log ratio. Forward KL weigh
 
 Temperature applies to both models before the divergence. Dividing both sets of logits by $T > 1$ flattens both distributions, exposing the teacher's ranking of wrong answers, the so-called dark knowledge. Temperature therefore changes the entropy of the target.
 
-It also changes the gradient. The gradient of forward KL with respect to the student's logits is $(q - p)/T$, and for large $T$ the difference $q - p$ itself shrinks like $1/T$. The gradient therefore scales like $1/T^2$, and multiplying the loss by $T^2$ keeps its magnitude comparable across temperatures, so the learning rate does not need retuning.
+It also changes the gradient. The gradient of forward KL with respect to the student's logits is $(q - p)/T$, and for large $T$ the difference $q - p$ itself shrinks like $1/T$. In that high-temperature regime the gradient therefore scales approximately like $1/T^2$. Multiplying the loss by $T^2$ compensates for this scale effect; it does not guarantee that one learning rate works across all temperatures or students.
 
 ## Working it by hand
 
@@ -83,7 +83,7 @@ Each direction costs $O(\text{positions} \times V)$, dominated by the exponentia
 
 Log space beats probability space because computing `p * log(p/q)` from probabilities fails exactly when distillation matters most: peaked teachers whose minority probabilities underflow. Log-softmax keeps the arithmetic exact over the full range of logits.
 
-As for direction, forward KL is what classic logit distillation uses and is the right default when the student should hedge like the teacher. Reverse KL suits a small student that cannot represent every teacher mode and should commit to one, which is also what on-policy distillation optimizes when the teacher scores the student's own samples. The $T^2$ factor changes no minimizer, only the gradient scale; leaving it out silently shrinks the effective learning rate by $T^2$.
+As for direction, forward KL is what classic logit distillation uses and is the right default when the student should hedge like the teacher. Reverse KL can favor concentrating on teacher-supported modes under capacity constraints. On-policy distillation specifies student-generated prefixes; it can use forward KL, reverse KL, or another justified discrepancy. Prefix source and divergence direction are independent choices, as explained in [distillation data and deployment](09-distillation-data-and-deployment.md). The $T^2$ factor changes no minimizer, only the gradient scale; leaving it out silently shrinks the effective learning rate by $T^2$.
 
 ## What can go wrong
 
@@ -99,8 +99,8 @@ The [post-trained capstone](../capstones/02-post-trained.md) may use distillatio
 
 ### Further reading
 
-- Hinton, Vinyals, and Dean, *Distilling the Knowledge in a Neural Network* (2015).
-- Agarwal et al., *On-Policy Distillation of Language Models: Learning from Self-Generated Mistakes* (2024).
+- Hinton, Vinyals, and Dean, [*Distilling the Knowledge in a Neural Network*](https://arxiv.org/abs/1503.02531) (2015).
+- Agarwal et al., [*On-Policy Distillation of Language Models: Learning from Self-Generated Mistakes*](https://arxiv.org/html/2306.13649v3) (2024).
 - Hugging Face TRL, the distillation trainer recipes.
 
 ## Key terms

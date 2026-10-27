@@ -14,7 +14,7 @@ This chapter follows a successful POC from [POC and Evaluation](../04-poc-and-ev
 
 ## Before you begin
 
-You need a passed POC and the eval parity method from [POC and Evaluation](../04-poc-and-evaluation/README.md). The primary reference is [Model Loading: Tokenizers and Chat Templates](../../ai-engineering/20-inference-engines/03-model-loading/#7-tokenizers-and-chat-templates) in *AI Engineering*, where template and tokenizer depth lives. Supplements are the chapters on deprecation and large-scale changes in [*Software Engineering at Google*](https://abseil.io/resources/swe-book) (free), [LLM Evaluation](../../ai-engineering/29-evaluation/) for parity checks, and [Serving & Load](../../ai-engineering/20-inference-engines/04-serving-and-load/) for the latency rows of the failure table.
+You need a passed POC and the eval parity method from [POC and Evaluation](../04-poc-and-evaluation/README.md). The primary reference is [Model Loading: Tokenizers and Chat Templates](../../ai-engineering/20-inference-engines/03-model-loading/03-cold-start-and-tokenizers.md#tokenizers-and-chat-templates) in *AI Engineering*, where template and tokenizer depth lives. Supplements are the chapters on deprecation and large-scale changes in [*Software Engineering at Google*](https://abseil.io/resources/swe-book) (free), [LLM Evaluation](../../ai-engineering/29-evaluation/) for parity checks, and [Serving & Load](../../ai-engineering/20-inference-engines/04-serving-and-load/) for the latency rows of the failure table.
 
 To build intuition before an engagement, point an OpenAI SDK client at a local `vllm serve` running a small instruct model, and send the same request with and without an explicit `temperature` and `top_p`; note what changes. Then render a chat template locally from a model's `tokenizer_config.json`, compare the token IDs with what the server reports, and find one way they could differ.
 
@@ -113,7 +113,7 @@ When a failure is not yours to fix, the next chapter, [Escalation and Handoff](.
 
 ### Further reading
 
-- [Model Loading: Tokenizers and Chat Templates](../../ai-engineering/20-inference-engines/03-model-loading/#7-tokenizers-and-chat-templates).
+- [Model Loading: Tokenizers and Chat Templates](../../ai-engineering/20-inference-engines/03-model-loading/03-cold-start-and-tokenizers.md#tokenizers-and-chat-templates).
 - [*Software Engineering at Google*](https://abseil.io/resources/swe-book) (free), chapters on deprecation and large-scale changes.
 
 ## Exercise

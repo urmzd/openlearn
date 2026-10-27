@@ -13,9 +13,9 @@ This section builds those three functions. It uses the cross-entropy of [Losses 
 
 For token ids $x_0, \dots, x_{T-1}$ and a boolean assistant mask $m_t$, causal cross-entropy is evaluated only where $m_t$ is true:
 
-$$L = -\frac{\sum_t m_t \log p(x_{t+1} \mid x_{\le t})}{\max\big(1, \sum_t m_t\big)}.$$
+$$L = -\frac{\sum_{t=0}^{T-2} m_{t+1} \log p(x_{t+1} \mid x_{\le t})}{\max\big(1, \sum_{t=0}^{T-2} m_{t+1}\big)}.$$
 
-Here $x_t$ is the token id at position $t$, $m_t$ is 1 for an assistant target and 0 otherwise, and $T$ is the (packed) sequence length. System and user tokens provide context but receive no target loss. When several documents share a row, a document boundary must also prevent attention from one packed example into another; the mask alone does not do that.
+Here $x_t$ is the token id at position $t$, $m_t$ selects the token at that same position as a target, and logits at $t$ therefore use the shifted mask $m_{t+1}$, and $T$ is the (packed) sequence length. System and user tokens provide context but receive no target loss. When several documents share a row, a document boundary must also prevent attention from one packed example into another; the mask alone does not do that.
 
 ## Working it by hand
 
@@ -29,7 +29,7 @@ Here $x_t$ is the token id at position $t$, $m_t$ is 1 for an assistant target a
 | loss mask | F | T | T | F |
 | document id | 0 | 0 | 1 | -1 |
 
-The attention mask allows position $j$ to attend to position $i \le j$ only when both have the same document id, so token 21 cannot see 11 or 12, and the padding (id -1) is neither a target nor context.
+The attention mask allows position $j$ to attend to position $i \le j$ only when both have the same nonnegative document id, so token 21 cannot see 11 or 12, and padding is neither a target nor context. After the causal target shift, suppress any prediction whose input and target belong to different documents. Token 21 needs an in-document predecessor such as BOS to be predicted, or its boundary target must be excluded; attention isolation alone does not prevent a cross-document training label.
 
 ## Designing the API
 
@@ -118,6 +118,8 @@ The common bugs are the mirror images of those checks. Training on user tokens h
 > **Warning:** A chat template that differs from the serving engine's by a single byte still trains a model that looks fine in offline evaluation and then misbehaves when served. Always render with the tokenizer the server uses.
 
 ## Where this leads
+
+[SFT recipes and data strategies](10-sft-recipes-and-data-strategies.md) compares assistant/final-turn/all-token losses, synthetic and rejection-sampled data, weighting, and the separate choice of full versus adapter updates.
 
 The SFT checkpoint is the starting point for the rest of this chapter: [Direct preference optimization and IPO](02-direct-preference-optimization.md) uses it as the reference policy, and the [post-trained capstone](../capstones/02-post-trained.md) runs SFT, then preference optimization, RL, and distillation on the TinyStories model while preserving the serving chat contract.
 

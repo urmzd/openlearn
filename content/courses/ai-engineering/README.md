@@ -15,7 +15,7 @@ This book follows an AI system from its learning assumptions to a model you can 
 Read the parts in order for the full progression, or choose a route below and follow its prerequisites. Pause at the review questions before revealing worked answers.
 
 - **Understanding learning:** [Statistical Learning](01-statistical-learning/README.md), then [Deep Learning](02-deep-learning/README.md), then [Reinforcement Learning](04-reinforcement-learning/README.md).
-- **Building a model:** [Numerics and Autograd](06-numerics-and-autograd/README.md), then [Tokenizers](07-tokenizers/README.md), then [The Modern Decoder Block](13-decoder-block/README.md).
+- **Building and training a model:** [Numerics and Autograd](06-numerics-and-autograd/README.md), then [Tokenizers](07-tokenizers/README.md), then [The Modern Decoder Block](13-decoder-block/README.md). Follow the [training-to-inference route](training-to-inference.md) for learning methods, PPO/GRPO, distillation, local serving, batch invariance, and scale.
 - **Shipping AI applications:** [Inference Engines and GPU Deployment](20-inference-engines/README.md), then [Retrieval and RAG](27-retrieval-and-rag/README.md), then [Agent SDK](28-agents/README.md), then [LLM Evaluation](29-evaluation/README.md).
 - **Responsible deployment:** [Data Licensing](33-data-licensing/README.md), then [Privacy and PII](34-privacy-and-pii/README.md), then [Bias and Safety Evaluations](36-bias-and-safety-evals/README.md).
 

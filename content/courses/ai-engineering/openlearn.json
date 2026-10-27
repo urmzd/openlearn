@@ -10,6 +10,10 @@
       "title": "Start here"
     },
     {
+      "file": "content/courses/ai-engineering/training-to-inference.md",
+      "title": "From learning to inference at scale"
+    },
+    {
       "file": "content/courses/ai-engineering/model-system-map.md",
       "title": "Model system architecture"
     },
