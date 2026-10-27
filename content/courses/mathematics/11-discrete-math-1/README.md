@@ -19,7 +19,7 @@ The chapter needs no earlier mathematics beyond high-school algebra. For the cou
 
 1. [Counting: parameters, FLOPs, KV bytes, and memory plans](01-counting-params-flops-kv-bytes.md): counts a decoder's parameters per component so they match Hugging Face exactly for dense, GQA, MoE, and MLA models, and derives KV-cache bytes, FLOPs per token, and a training memory plan, all as exact integers.
 2. [Injective, surjective, bijective: the GPT-2 byte map](02-injective-surjective-bijective-gpt2-byte-map.md): builds the three definitions as checks on a dict, and derives GPT-2's bijection from the 256 bytes to 256 visible characters that byte-level BPE vocabularies are written in.
-3. [Discrete math 1 problem set](03-problem-set.md): problems with worked answers and model proofs on sets and logic, counting, proof techniques, induction and loop invariants, relations, and functions and bijections. Work it before the two sections above.
+3. [Discrete math 1 problem set](03-problem-set/README.md): problems with worked answers and model proofs on sets and logic, counting, proof techniques, induction and loop invariants, relations, and functions and bijections. Work it before the two sections above.
 
 ## A survey of the subject
 

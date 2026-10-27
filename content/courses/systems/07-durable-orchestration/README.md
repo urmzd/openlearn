@@ -26,7 +26,7 @@ This chapter assumes the idempotency and partial-failure reasoning of [RPC and P
 6. [Deterministic replay](06-deterministic-replay.md). Workflow code that rebuilds its state by replaying history, plus Continue-As-New, history paging, and payload limits.
 7. [Durable timers](07-durable-timers.md). Timers that survive restarts and fire exactly once, and a clock you can move forward in tests.
 8. [Signals, cancellation, and sagas](08-signals-cancellation-and-sagas.md). How operators approve or cancel a running workflow, and how a saga undoes completed steps in reverse order.
-9. [Subprocess activities: the Go runner and the Python helper](09-subprocess-activities.md). The file-and-exit-code contract that lets a Go worker run Python durably, resuming from the last heartbeated checkpoint.
+9. [Subprocess activities: the Go runner and the Python helper](09-subprocess-activities/README.md). The file-and-exit-code contract that lets a Go worker run Python durably, resuming from the last heartbeated checkpoint.
 10. [Raft high availability for the durable log (optional)](10-raft-ha.md). Three replicas that agree on one log, built from the majority-intersection fact; the engine is complete without it.
 11. [Platform workflows: TrainRun and EvalSuite](11-trainrun-and-evalsuite.md). Training as segments with evaluation at fixed steps, resumable bit for bit after any kill.
 12. [ModelRelease: gates, canary, burn check, and rollback](12-model-release.md). The release as a workflow: model card and ledger gates, human approval, a canary measured against the error budget, and a saga that rolls back.

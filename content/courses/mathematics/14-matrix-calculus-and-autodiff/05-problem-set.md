@@ -4,7 +4,7 @@ By now you have a scalar autograd engine, [Scalar reverse mode: the Value graph]
 
 This problem set drills exactly those derivations: the shape bookkeeping, matrix differentials, the trace trick, the VJPs of softmax, log-softmax, cross-entropy, LayerNorm, and RMSNorm, the cost model of forward and reverse mode, and the attention backward that returns in [Scaled dot-product attention (forward and backward)](../../ai-engineering/11-transformer/01-scaled-dot-product-attention.md) and in FlashAttention. It is a pen-and-paper set with no code to write. Every problem is followed by a collapsed worked answer with the final result, the derivation, and the common wrong answers and why they are wrong; 42 answers in all, counting lettered parts, including four proofs (q16, q20, q28, q34) whose model derivations are also in [`course/solutions/solve/S-M08/`](../../../../course/solutions/solve/S-M08/). Try each problem before opening its answer.
 
-The proofs assume the habits of the [Discrete math 1 problem set](../11-discrete-math-1/03-problem-set.md), and the set leans on the gradients and chain rule of the [Calculus 3 problem set](../10-calculus-3/03-problem-set.md). The opening of this chapter, [Matrix Calculus and Autodiff](README.md), gives the wider picture.
+The proofs assume the habits of the [Discrete math 1 problem set](../11-discrete-math-1/03-problem-set/README.md), and the set leans on the gradients and chain rule of the [Calculus 3 problem set](../10-calculus-3/03-problem-set.md). The opening of this chapter, [Matrix Calculus and Autodiff](README.md), gives the wider picture.
 
 > **Learning objectives**
 > - Give the shape of any gradient and the strides of any row-major view, and turn broadcasting into a backward sum.
@@ -60,7 +60,7 @@ Here $\overline{v}$ is the mean of the entries of $v$, $\mu$ the mean of $x$, $\
 
 ### Forward versus reverse mode
 
-Which mode to run is a question of counting. For $f: \mathbb{R}^n \to \mathbb{R}^m$, forward mode (the dual numbers of [Dual numbers and forward-mode autodiff](01-dual-numbers-forward-mode.md)) computes one Jacobian-vector product $J v$ per pass, so the full Jacobian takes $n$ passes. Reverse mode computes one $J^\top u$ per pass, so it takes $m$. A loss has $m = 1$: one backward pass gives the gradient with respect to every parameter, at the price of storing the forward activations it needs. For a matrix product the backward computes two products of the same size as the forward one, so backward costs about twice the forward FLOPs, and a training step about three times: the $6N$ per token of q13 in the [Discrete math 1 problem set](../11-discrete-math-1/03-problem-set.md).
+Which mode to run is a question of counting. For $f: \mathbb{R}^n \to \mathbb{R}^m$, forward mode (the dual numbers of [Dual numbers and forward-mode autodiff](01-dual-numbers-forward-mode.md)) computes one Jacobian-vector product $J v$ per pass, so the full Jacobian takes $n$ passes. Reverse mode computes one $J^\top u$ per pass, so it takes $m$. A loss has $m = 1$: one backward pass gives the gradient with respect to every parameter, at the price of storing the forward activations it needs. For a matrix product the backward computes two products of the same size as the forward one, so backward costs about twice the forward FLOPs, and a training step about three times: the $6N$ per token of q13 in the [Discrete math 1 problem set](../11-discrete-math-1/03-problem-set/README.md).
 
 ### Attention
 
@@ -376,7 +376,7 @@ Four short problems on what each mode costs, in passes, bytes, and FLOPs.
 
 <details><summary>Answer</summary>
 
-**(a) $4mkn$. (b) $3$.** Forward: $XW$ costs $2mkn$ FLOPs ($mn$ outputs, $k$ multiply-adds each). Backward computes two products of the same size: $GW^\top$ ($m \times n$ times $n \times k$) and $X^\top G$ ($k \times m$ times $m \times n$), $2mkn$ each. (b) $(2 + 4)/2 = 3$: the $6N$ FLOPs per token of q13 in the [Discrete math 1 problem set](../11-discrete-math-1/03-problem-set.md). Common mistakes: $2mkn$, counting only one of the two products; $mkn$, counting multiply-adds as one FLOP; $2$ for (b), the backward-to-forward ratio rather than the total.
+**(a) $4mkn$. (b) $3$.** Forward: $XW$ costs $2mkn$ FLOPs ($mn$ outputs, $k$ multiply-adds each). Backward computes two products of the same size: $GW^\top$ ($m \times n$ times $n \times k$) and $X^\top G$ ($k \times m$ times $m \times n$), $2mkn$ each. (b) $(2 + 4)/2 = 3$: the $6N$ FLOPs per token of q13 in the [Discrete math 1 problem set](../11-discrete-math-1/03-problem-set/README.md). Common mistakes: $2mkn$, counting only one of the two products; $mkn$, counting multiply-adds as one FLOP; $2$ for (b), the backward-to-forward ratio rather than the total.
 
 </details>
 

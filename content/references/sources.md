@@ -66,6 +66,52 @@ References for [Engineering Acronyms](../courses/software-engineering/13-enginee
 | Chris Jones, John Wilkes, Niall Murphy, and Cody Smith, [Service Level Objectives](https://sre.google/sre-book/service-level-objectives/), *Site Reliability Engineering*, chapter 4 | Distinguishing SLIs, SLOs, and SLAs; defining measurements and agreement consequences |
 | AWS Well-Architected Reliability Pillar, [Disaster Recovery objectives](https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/disaster-recovery-dr-objectives.html) | RTO as acceptable restoration delay and RPO as acceptable data loss expressed in time |
 
+## Training-to-inference science and engineering
+
+Primary sources checked on **2026-10-26** for the [training-to-inference route](../courses/ai-engineering/training-to-inference.md). Papers establish algorithms and their reported experiments; runtime references establish documented controls for their stated versions. The curriculum's analytical examples are teaching scenarios, not measurements of local GPU performance.
+
+| Source, edition, and locator | Claims supported | Local application and verification boundary |
+|---|---|---|
+| Goodfellow, Bengio, Courville, [*Deep Learning*](https://www.deeplearningbook.org/), 2016, chapters 5–8 | Learning signals, empirical objectives, gradient-based optimization | High-level learning loop; the chapter-5 HTML exceeded the retrieval size limit, so the official index/edition was checked |
+| Sutton and Barto, [*Reinforcement Learning*, 2nd-edition draft hosted by Stanford](https://web.stanford.edu/class/psych209/Readings/SuttonBartoIPRLBook2ndEd.pdf), 2014/2015 draft, section 5.5 | Behavior versus target policies; importance sampling and coverage | Draft section checked; the author's final-edition page timed out. Finite-action expectation independently recomputed |
+| Schulman et al., [PPO](https://arxiv.org/abs/1707.06347), 2017, equations 7 and 9; [GAE](https://arxiv.org/abs/1506.02438), section 3 | Clipped surrogate, actor/value/entropy formulation, advantage recurrence | Four clipping sign cases, finite-difference slopes, GAE and terminal/truncation checks in `learning_checks.py` |
+| Ouyang et al., [InstructGPT](https://arxiv.org/abs/2203.02155), 2022, section 3 | SFT, comparison reward modeling, and PPO as a documented RLHF recipe | Pairwise reward loss; not a claim about every current provider's pipeline |
+| Shao et al., [DeepSeekMath](https://arxiv.org/html/2402.03300v3), 2024, section 4.1 | GRPO group baseline, token objective, reference-KL estimator | Corrected inclusive-baseline, zero-advantage, and KL-estimator distinctions; independent finite-action baseline check |
+| Espeholt et al., [IMPALA](https://arxiv.org/abs/1802.01561), 2018 | Actor/learner lag and V-trace off-policy correction | Explains why stale PPO batches need an explicit estimator, not a renamed buffer |
+| Yu et al., [DAPO](https://arxiv.org/abs/2503.14476), 2025; Liu et al., [Understanding R1-Zero-Like Training](https://arxiv.org/abs/2503.20783), 2025 | GRPO-related normalization, clipping, sampling, and bias analysis | Variants are recipe/objective changes; no reproduced convergence claim |
+| Hugging Face, [TRL GRPO 0.23.1](https://huggingface.co/docs/trl/v0.23.1/grpo_trainer) | Versioned trainer loss/reward-scaling choices | Configuration vocabulary; defaults must be checked for the installed version |
+| Hinton, Vinyals, Dean, [Distillation](https://arxiv.org/abs/1503.02531), 2015; Agarwal et al., [On-policy distillation](https://arxiv.org/html/2306.13649v3), 2024 | Soft targets, temperature, student-generated prefixes and distribution mismatch | KL arithmetic and distinction between prefix source and divergence direction |
+| Narayanan et al., [Megatron-LM](https://arxiv.org/abs/2104.04473), 2021; Rajbhandari et al., [ZeRO](https://arxiv.org/abs/1910.02054), 2020 | Tensor/pipeline/data layouts and model-state sharding | Global-batch and pipeline-bubble calculations; actual scaling requires profiling |
+| PyTorch [FSDP2](https://docs.pytorch.org/docs/2.9/distributed.fsdp.fully_shard.html), [distributed checkpoint](https://docs.pytorch.org/docs/2.9/distributed.checkpoint.html), [reproducibility](https://docs.pytorch.org/docs/2.9/notes/randomness.html), 2.9 | Sharding groups, checkpoint API constraints, scoped reproducibility | Distributed/restart lab and numerical acceptance criteria; no multi-GPU run claimed |
+| Ainslie et al., [GQA](https://arxiv.org/abs/2305.13245), 2023; DeepSeek-AI, [DeepSeek-V2](https://arxiv.org/abs/2405.04434), 2024; Gu and Dao, [Mamba](https://arxiv.org/abs/2312.00752), 2024 | Shared KV heads, latent attention/MoE, recurrent state-space execution | Architecture-specific memory accounting; reported speedups are not universal |
+| Kwon et al., [PagedAttention](https://arxiv.org/abs/2309.06180), 2023; Zhong et al., [DistServe](https://arxiv.org/abs/2401.09670), 2024 | Paged cache/sharing and prefill/decode interference/disaggregation | Cache budget and illustrative KV-transfer bound; deployment-specific benefit must be measured |
+| vLLM [serve CLI](https://docs.vllm.ai/en/v0.11.0/cli/serve.html), [optimization guide](https://docs.vllm.ai/en/v0.11.0/configuration/optimization.html), archived 0.11.0 | Documented spelling and scope of scheduler, cache, precision, placement, and graph controls | Versioned mapping, not a recommendation of that release or its defaults |
+| vLLM [batch invariance](https://docs.vllm.ai/en/stable/features/batch_invariance/), rolling stable snapshot | `VLLM_BATCH_INVARIANT` and supported execution restrictions | Separate from archived CLI examples; pin runtime before reproducing |
+| SGLang [installation](https://docs.sglang.io/docs/get-started/install), [server arguments](https://docs.sglang.io/docs/advanced_features/server_arguments), [deterministic inference](https://docs.sglang.io/docs/advanced_features/deterministic_inference), rolling snapshot | Local launch, memory/chunk/request controls, current graph-option deprecation, deterministic mode | Commands checked against docs; no local GPU launch or performance result claimed |
+| ggml-org, [llama.cpp server](https://github.com/ggml-org/llama.cpp/tree/master/tools/server), rolling repository snapshot | GGUF local server, loopback bind, alias and context controls | CPU/accelerator local route; pin a build before comparing |
+| Horace He / Thinking Machines Lab, [Defeating Nondeterminism in LLM Inference](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/), 2025-09-10 | Fixed-shape determinism versus batch invariance; reduction-dependent kernels | Independent float-association/argmax examples plus a proposed actual-engine test matrix |
+
+The [learning checks](../courses/ai-engineering/19-training-methods/code/learning_checks.py) independently recompute objective values, clipping derivatives, GAE boundaries, importance correction/ESS, finite-group baseline bias, KL direction, cache sizes, and numerical counterexamples. The [local lab](../courses/ai-engineering/20-inference-engines/14-local-serving-and-validation.md) separates API, numerical, task-quality, and load evidence. Hardware-dependent recipes remain experiments for the reader's supported stack, rather than claims of tested GPU results in this repository.
+
+### SFT and preference-optimization variants
+
+Checked 2026-10-26 for [SFT recipes](../courses/ai-engineering/18-post-training/10-sft-recipes-and-data-strategies.md) and [preference variants](../courses/ai-engineering/18-post-training/11-preference-optimization-variants.md). These sources identify objectives and data assumptions; no universal quality ranking or local reproduction of every paper is claimed.
+
+| Primary source | Claims and verification boundary |
+|---|---|
+| Hugging Face, [TRL SFT 0.23.1](https://huggingface.co/docs/trl/v0.23.1/sft_trainer) | Completion/assistant masks and packing vocabulary; parameter updates are a separate axis |
+| Wu et al., [On the Generalization of SFT](https://arxiv.org/abs/2508.05629), 2025 | DFT probability-dependent token update scaling; versioned implementation exposes a distinct loss type |
+| Azar et al., [IPO](https://arxiv.org/abs/2310.12036), 2023 | Finite relative-score target; not a hard global KL constraint |
+| Chowdhury et al., [Robust DPO](https://arxiv.org/abs/2403.00409), 2024 | Noise-correction assumptions; distinguish corrected estimators from label-smoothed mixtures |
+| Ethayarajh et al., [KTO](https://arxiv.org/abs/2402.01306), 2024, revised 2026 | Individually desirable/undesirable labels and prospect-theoretic utility |
+| Hong et al., [ORPO](https://arxiv.org/abs/2403.07691), 2024 | Reference-free odds-ratio penalty combined with supervised likelihood |
+| Meng et al., [SimPO](https://arxiv.org/abs/2405.14734), 2024 | Length-averaged implicit reward and target margin |
+| Guo et al., [Online AI-feedback alignment](https://arxiv.org/abs/2402.04792), 2024 | Online candidate collection and direct preference fitting |
+| Ahmadian et al., [Back to Basics](https://arxiv.org/abs/2402.14740), 2024 | REINFORCE-style learning with a leave-one-out baseline |
+| Hugging Face, [TRL DPO 0.23.1](https://huggingface.co/docs/trl/v0.23.1/dpo_trainer) | IPO normalization; cDPO/noise controls; EXO, NCA, BCO, SPPO, AOT, APO, WPO, reference refresh, length weighting, and combined-loss implementation vocabulary |
+
+Independent checks compute smoothing's stationary margin, summed/averaged score reversal, a zero DPO pair margin with nonzero global KL, and leave-one-out baselines in `learning_checks.py`. These mathematical checks establish the examples, not production convergence.
+
 ## Cross-validation protocol
 
 For future source additions, capture: stable source URL, title, authors, edition/date, access category, topic, prerequisite, specific claim or learning outcome, check date, and reviewer. For technical claims, record a section/page or named result and assumptions. Independently recompute quantitative examples or compare with an independent implementation. Two model answers agreeing is not independent evidence when both repeat the same source.

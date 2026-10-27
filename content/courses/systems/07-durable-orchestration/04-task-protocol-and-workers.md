@@ -426,7 +426,7 @@ On the worker, a pool with one slot too many, or polling before taking a slot, r
 
 This section built on [the workflow service](02-workflow-service.md), whose `commit` every completion goes through and whose effects enqueue the tasks polled here, and on [the task queue](03-task-queue.md), where every delivery is a lease and `Check` fences completions.
 
-Looking ahead, [activities](05-activities.md) completes the protocol with `FailActivityTask` and `RecordHeartbeat`, and its `activity.IdempotencyKey` reads `Info`. In [deterministic replay](06-deterministic-replay.md), `workflow.Registry` becomes the `WorkflowHandler`, and [durable timers](07-durable-timers.md) and [signals, cancellation, and sagas](08-signals-cancellation-and-sagas.md) register more commands; the latter also extends these task handlers and the worker's activity context for cancellation and signals. [Subprocess activities](09-subprocess-activities.md) is an `ActivityFunc` that heartbeats checkpoints.
+Looking ahead, [activities](05-activities.md) completes the protocol with `FailActivityTask` and `RecordHeartbeat`, and its `activity.IdempotencyKey` reads `Info`. In [deterministic replay](06-deterministic-replay.md), `workflow.Registry` becomes the `WorkflowHandler`, and [durable timers](07-durable-timers.md) and [signals, cancellation, and sagas](08-signals-cancellation-and-sagas.md) register more commands; the latter also extends these task handlers and the worker's activity context for cancellation and signals. [Subprocess activities](09-subprocess-activities/README.md) is an `ActivityFunc` that heartbeats checkpoints.
 
 Production workers go further:
 

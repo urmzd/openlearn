@@ -4,7 +4,7 @@ Most of this chapter takes the consumer's side: someone else trained a model, an
 
 The section answers four questions in order. How is a model's architecture actually stored, so that an engine you have never met can rebuild it? How does LoRA work during training and at serving time, since it decides what you ship? How do you publish and share, as weights, as adapters, or as an endpoint? And what do practical deployments look like, with the GPUs and replicas each needs?
 
-Read [Model Loading: Hub to GPU](03-model-loading/README.md) first: it describes from the loader's side every file this section asks you to produce. The training side, mixed precision and sharded optimizers, is in [Training and Post-Training](../19-training-methods/README.md), and LoRA is derived and built by hand in [LoRA, PiSSA, and merge](../12-objectives-and-adaptation/06-lora-pissa-and-merge.md) in *AI Engineering*. The deployments at the end use the Kubernetes patterns from [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment.md).
+Read [Model Loading: Hub to GPU](03-model-loading/README.md) first: it describes from the loader's side every file this section asks you to produce. The training side, mixed precision and sharded optimizers, is in [Training and Post-Training](../19-training-methods/README.md), and LoRA is derived and built by hand in [LoRA, PiSSA, and merge](../12-objectives-and-adaptation/06-lora-pissa-and-merge.md) in *AI Engineering*. The deployments at the end use the Kubernetes patterns from [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment/README.md).
 
 > **Learning objectives**
 > - Explain how a model's architecture is stored as configuration plus code plus named tensors, and export a checkpoint from your own training code into a format standard engines load.
@@ -159,7 +159,7 @@ An endpoint shared with other people needs what any multi-tenant API needs: auth
 
 ## Practical deployments
 
-The rest of the chapter composes into a handful of deployments that cover most real requests. Each is sized from the memory budget and the formulas in [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment.md); the throughput figures marked "measured" are the kind of number a load test produces, and stand in for your own.
+The rest of the chapter composes into a handful of deployments that cover most real requests. Each is sized from the memory budget and the formulas in [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment/README.md); the throughput figures marked "measured" are the kind of number a load test produces, and stand in for your own.
 
 **1. An internal assistant for many teams.** Twenty teams each fine-tune Llama-3.1-8B on their own documentation and tickets. Ship each as a rank-16 LoRA adapter (84 MB). Serve one base model on H100s with `--enable-lora --max-loras 8 --max-lora-rank 16`, adapters registered at runtime, each team's adapter exposed as its own model name behind the gateway. The 8B base in BF16 leaves about 55 GiB of KV pool per GPU, room for about 55 concurrent 8k-token sequences. If the peak is 15 req/s and a replica measures 5 req/s of goodput with mixed adapters, $\lceil 15 / (5 \times 0.7) \rceil = 5$ single-GPU replicas, against twenty dedicated deployments if each team had merged its own model.
 
@@ -187,7 +187,7 @@ From a finished training run to other people using the model:
 
 ## Where this leads
 
-The loader's side of every file in this section is [Model Loading: Hub to GPU](03-model-loading/README.md), and the fleet that serves the published model is [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment.md). LoRA, PiSSA, and merging are built from scratch in [LoRA, PiSSA, and merge](../12-objectives-and-adaptation/06-lora-pissa-and-merge.md), and the training that produces checkpoints is in [Training and Post-Training](../19-training-methods/README.md). Evaluating a model before you share it is [LLM Evaluation](../29-evaluation/README.md) in *AI Engineering*.
+The loader's side of every file in this section is [Model Loading: Hub to GPU](03-model-loading/README.md), and the fleet that serves the published model is [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment/README.md). LoRA, PiSSA, and merging are built from scratch in [LoRA, PiSSA, and merge](../12-objectives-and-adaptation/06-lora-pissa-and-merge.md), and the training that produces checkpoints is in [Training and Post-Training](../19-training-methods/README.md). Evaluating a model before you share it is [LLM Evaluation](../29-evaluation/README.md) in *AI Engineering*.
 
 ### Further reading
 

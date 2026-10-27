@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/io/telemetry.pyi (dur.09): OTLP/HTTP export from TRACEPARENT
-# chapter: content/courses/systems/07-durable-orchestration/09-subprocess-activities.md
+# chapter: content/courses/systems/07-durable-orchestration/09-subprocess-activities/README.md
 #
 # The D9 exception: a Python subprocess activity talks to nothing on the
 # platform except the OpenTelemetry collector. The worker hands it the

@@ -1,6 +1,6 @@
 # Inference Engines and GPU Deployment
 
-Training a model and serving it are different problems with different economics. Training is about *throughput over a fixed dataset*; inference is about *latency and throughput over an open-ended stream of requests*. A model is trained once but served billions of times, so inference dominates its lifetime cost. And inference has a defining constraint: autoregressive decoding generates one token per forward pass, and each pass must read the entire model's weights plus a growing KV cache from GPU memory. LLM inference is therefore *memory-bandwidth bound*, not compute bound. The bottleneck is moving weights and the KV cache through the GPU, not doing FLOPs, and the whole field of LLM serving is a fight against memory bandwidth.
+Training optimizes parameters; serving applies them under a latency, throughput, quality, and cost contract. Dense autoregressive decode at small batches often waits on weight and KV-cache reads. Larger batches increase weight reuse, long contexts increase attention work, and distributed layouts add communication. Prefill, decode, startup, and scheduling can therefore have different bottlenecks. Use the [architecture and roofline analysis](09-architecture-and-performance.md) to identify the limiting resource for the actual workload.
 
 This chapter follows that fight from the model's architecture to a deployed, load-tested fleet. The opening you are reading surveys the core ideas: the transformer seen from a serving perspective, the two phases of generation, the KV cache, batching, kernels, quantization, decoding tricks, parallelism, deployment, and the metrics that make up a serving contract. The sections that follow go deep on each layer: the quantizers that shrink weights and caches, the frameworks that run models across languages, the mechanics of loading a checkpoint onto a GPU, the capacity math and load testing behind a real deployment, the platforms that sit between an application and a token, what happens inside an engine from startup to each step, the Kubernetes deployment of a GPU fleet, and the producer's side: packaging, publishing, and sharing a model you trained.
 
@@ -19,16 +19,24 @@ The best preparation is practical: serve a real model locally with vLLM before r
 
 ## In this chapter
 
+For a practical start, use [the local serving lab](14-local-serving-and-validation.md). Read [architecture constraints](09-architecture-and-performance.md), [generic runtime controls](10-runtime-controls-and-flags.md), and [batch invariance](13-batch-invariance-and-reproducibility.md) before interpreting provider-specific tuning examples.
+
 1. **[Quantization: Math to Code](01-quantization/README.md).** The quantizer zoo (GPTQ, AWQ, SmoothQuant, NF4, GGUF k-quants, FP8, QuIP#, and TurboQuant) derived from the math and implemented in C, CUDA, and Rust.
 2. **[Inference Frameworks: The Cross-Language Landscape](02-frameworks/README.md).** The inference stack across C (llama.cpp), Python (vLLM, TGI, SGLang), Rust (candle, mistral.rs), and Zig (ZML), with runnable Rust and Zig examples.
 3. **[Model Loading: Hub to GPU](03-model-loading/README.md).** Hub repo anatomy, the safetensors byte layout, what `from_pretrained` does, how engines shard weights, cold-start math, and chat templates, with a triage playbook for failed loads.
 4. **[Serving, Capacity & Load Testing: Math to Code](04-serving-and-load/README.md).** The roofline for prefill and decode, memory budgets, SLOs and goodput, parallelism, vLLM and SGLang knobs, load-testing methodology, and cost per token.
 5. **[LLM Serving Platforms: How They Work and When to Use Them](05-serving-platforms.md).** How Anyscale, Ray, vLLM, SGLang, RouteLLM, and OpenRouter work, their use cases and trade-offs, and what reproducibility costs.
 6. **[Inside an Inference Engine: How vLLM and SGLang Run a Model](06-inside-an-inference-engine.md).** What happens from `vllm serve` to the first token: the processes, reading the architecture, building the model already split per GPU, streaming and slicing weights, profiling memory into KV blocks, CUDA graph capture, one step of the scheduling loop, and what SGLang does differently.
-7. **[Deploying LLMs on Kubernetes: GPUs, Replicas, and Rollouts](07-gpu-kubernetes-deployment.md).** From the capacity plan to a running fleet: pod shape and replica math, GPU node pools, MIG and time-slicing, getting Hugging Face weights onto nodes, the vLLM Deployment, rollouts, autoscaling with lead time, LeaderWorkerSet, routing, and sizing separate prefill and decode pools.
+7. **[Deploying LLMs on Kubernetes: GPUs, Replicas, and Rollouts](07-gpu-kubernetes-deployment/README.md).** From the capacity plan to a running fleet: pod shape and replica math, GPU node pools, MIG and time-slicing, getting Hugging Face weights onto nodes, the vLLM Deployment, rollouts, autoscaling with lead time, LeaderWorkerSet, routing, and sizing separate prefill and decode pools.
 8. **[From Training Run to Shared Model: Packaging, Publishing, and Use Cases](08-train-publish-share.md).** How architecture is stored, exporting your own checkpoint, how LoRA runs in training and serving, publishing to the Hub, sharing weights versus adapters versus endpoints, and six practical deployments sized end to end.
 
-The rest of this opening builds the shared vocabulary those sections rely on.
+
+9. [Architecture choices and performance limits](09-architecture-and-performance.md): dense/MoE, MHA/GQA/latent attention, recurrent/hybrid state, and workload-dependent bottlenecks.
+10. [Runtime controls and inference flags](10-runtime-controls-and-flags.md): provider-neutral scheduling, memory, precision, compilation, sampling, and reproducibility mechanisms with versioned mappings.
+11. [Serving layouts and disaggregation](11-serving-layouts-and-disaggregation.md): in-process execution, local HTTP, independent replicas, model parallelism, and prefill/decode pools.
+12. [Performance experiments and validation](12-performance-experiments-and-validation.md): correctness layers, fixed-workload ablations, goodput, errors, cost, and evidence limits.
+13. [Batch invariance and reproducibility](13-batch-invariance-and-reproducibility.md): deterministic execution versus per-request invariance, numerical causes, and a test matrix.
+14. [Local training, serving, and validation lab](14-local-serving-and-validation.md): CPU checks, a tiny training loop, vLLM/SGLang/llama.cpp launches, shared API probes, and load testing.
 
 ## The transformer, seen from serving
 
@@ -38,15 +46,15 @@ Self-attention computes $\text{Attention}(Q, K, V) = \text{softmax}(QK^\top / \s
 
 $$\text{KV bytes} = 2 \times n_\text{layers} \times n_\text{kv heads} \times d_\text{head} \times \text{seq\_len} \times \text{batch} \times \text{bytes}$$
 
-The KV cache size, in turn, dictates how many concurrent requests fit in memory. Several architectural variants change it. **Multi-Query Attention** (MQA) and **Grouped-Query Attention** (GQA) shrink the KV cache by sharing K and V heads across query heads. **Mixture-of-Experts** (MoE) routes each token to a few experts, raising the parameter count without raising per-token FLOPs. And positional schemes such as **RoPE** and **ALiBi** let models extrapolate to longer contexts than they were trained on.
+The KV cache size, in turn, dictates how many concurrent requests fit in memory. Several architectural variants change it. **Multi-Query Attention** (MQA) and **Grouped-Query Attention** (GQA) shrink the KV cache by sharing K and V heads across query heads. **Mixture-of-Experts** (MoE) routes each token to a few experts, raising the parameter count without raising per-token FLOPs. Position schemes such as **RoPE** and **ALiBi** affect long-context behavior; supported context length and extrapolation quality require validation and sometimes additional training.
 
 ## The two phases: prefill and decode
 
 Generation has two distinct phases with opposite performance profiles, and they are optimized differently.
 
-**Prefill** processes the entire prompt in one parallel forward pass and populates the KV cache. It is *compute-bound*: large matmuls saturate the GPU. Prefill determines **time to first token** (TTFT).
+**Prefill** processes the entire prompt in one parallel forward pass and populates the KV cache. With enough prompt tokens it often becomes *compute-bound*, while small inputs or other layers can be limited by overhead or memory. Prefill determines **time to first token** (TTFT).
 
-**Decode** generates tokens one at a time, each pass reading all the weights plus the KV cache to produce a single token per sequence. It is *memory-bandwidth-bound*: the GPU is mostly idle, waiting on memory. Decode determines **inter-token latency** (ITL) and **time per output token** (TPOT).
+**Decode** generates tokens one at a time, each pass reading all the weights plus the KV cache to produce a single token per sequence. At small dense-model batches it is often *memory-bandwidth-bound*. Larger batches, long contexts, and communication can change that limit. Decode determines **inter-token latency** (ITL) and **time per output token** (TPOT).
 
 A useful mental model is that prefill is a sprint, one big burst of compute, while decode is a slow drip of thousands of tiny memory-bound steps. A serving system must schedule both without one starving the other. **Chunked prefill** helps by splitting long prompts so that prefill and decode can be interleaved in the same batch, smoothing latency spikes.
 
@@ -54,9 +62,9 @@ A useful mental model is that prefill is a sprint, one big burst of compute, whi
 
 The KV cache is the central data structure of inference. It stores the key and value tensors for every token already processed, per layer, so future tokens do not recompute them; this turns $O(n^2)$ regeneration into $O(n)$ incremental work. It trades memory for compute, and managing it well is what separates toy serving from production throughput.
 
-The cache dominates memory because it grows linearly with sequence length and batch size; for long contexts it can exceed the model weights themselves. Naive serving makes this worse. Allocating one contiguous region per request wastes 60 to 80% of memory to internal and external fragmentation and to over-reservation for the maximum sequence length.
+The cache dominates memory because it grows linearly with sequence length and batch size; for long contexts it can exceed the model weights themselves. Naive serving makes this worse. Contiguous allocation can waste memory through fragmentation and over-reservation. The PagedAttention paper measured substantial waste in its evaluated baselines; the amount depends on the allocator and workload.
 
-**PagedAttention**, introduced by vLLM, fixes this by managing the KV cache like virtual memory. The cache is stored in fixed-size *blocks* (pages), referenced through a block table and allocated on demand. Each sequence sees contiguous *logical* blocks, and the table maps them to whatever *physical* blocks were free. Fragmentation drops to nearly zero, and the design enables copy-on-write sharing of prompt prefixes: two sequences with the same system prompt point at one physical block with a reference count of 2, which is freed only when both finish.
+**PagedAttention**, introduced by vLLM, fixes this by managing the KV cache like virtual memory. The cache is stored in fixed-size *blocks* (pages), referenced through a block table and allocated on demand. Each sequence sees contiguous *logical* blocks, and the table maps them to whatever *physical* blocks were free. Tail-block waste and metadata remain, while contiguous over-reservation is greatly reduced, and the design enables copy-on-write sharing of prompt prefixes: two sequences with the same system prompt point at one physical block with a reference count of 2, which is freed only when both finish.
 
 ![PagedAttention block tables mapping logical KV blocks to non-contiguous physical blocks, with a shared prefix block](diagrams/paged-kv-cache.svg)
 
@@ -66,7 +74,7 @@ The cache dominates memory because it grows linearly with sequence length and ba
 
 Reclaimed memory pays off only if the scheduler fills it with work, which is the job of batching. Throughput and latency trade off directly through batch size, and the scheduling strategy decides how well that trade is made.
 
-**Static batching** waits to assemble a fixed batch and runs it to completion. It is simple, but the whole batch waits for its slowest, longest sequence, giving terrible GPU utilization. **Continuous (in-flight) batching** schedules at the *token* level instead: as soon as one sequence finishes, it is evicted and a new request is admitted into the freed slot, mid-flight. This keeps the GPU saturated, and it is the default in vLLM, TGI, and TensorRT-LLM. Continuous batching is usually the single biggest throughput improvement available, often 5 to 20 times over static batching under real, variable-length traffic.
+**Static batching** waits to assemble a fixed batch and runs it to completion. It is simple, but the whole batch waits for its slowest, longest sequence, giving terrible GPU utilization. **Continuous (in-flight) batching** schedules at the *token* level instead: as soon as one sequence finishes, it is evicted and a new request is admitted into the freed slot, mid-flight. This keeps the GPU saturated, and production engines commonly expose it through their scheduling controls. Its benefit depends on the length mix, arrival pattern, scheduler, device, and latency constraints; compare it under a fixed workload.
 
 Batch size remains a **throughput-versus-latency knob**. Bigger batches give more tokens per second and a better cost per token, but higher per-request latency, and a serving SLO picks a point on that curve. **Disaggregated prefill and decode** goes further by running compute-bound prefill and memory-bound decode on *separate* GPU pools, so that each pool is sized for its own bottleneck.
 
@@ -86,7 +94,7 @@ There are several flavors. **Weight-only quantization** to INT8 or INT4 (GPTQ, A
 
 ## Decoding optimizations
 
-Decode's memory-bound single-token steps leave compute idle, and **speculative decoding** puts it to work. A small, fast *draft* model proposes $K$ tokens, and the big *target* model verifies them all in one parallel pass, accepting the longest correct prefix. This converts memory-bound single-token decode into compute-bound batch verification, for a 2 to 3 times speedup with an identical output distribution. **Medusa, EAGLE, and lookahead decoding** are self-speculation variants that add lightweight prediction heads instead of a separate draft model.
+Decode's memory-bound single-token steps leave compute idle, and **speculative decoding** puts it to work. A small, fast *draft* model proposes $K$ tokens, and the big *target* model verifies them all in one parallel pass, accepting the longest correct prefix. Batch verification can reduce target passes per accepted token. Exact accept/resample rules preserve the target distribution; speed depends on acceptance, draft cost, verification cost, and load. **Medusa, EAGLE, and lookahead decoding** are self-speculation variants that add lightweight prediction heads instead of a separate draft model.
 
 Other decoding controls shape output rather than speed. **Sampling parameters** (temperature, top-k, top-p or nucleus sampling, and repetition penalty) change what is generated without changing cost much. **Structured or constrained decoding** masks logits to force valid JSON or a grammar (Outlines, XGrammar), which is critical for tool-calling reliability.
 
@@ -117,7 +125,7 @@ All of these techniques are packaged in serving frameworks, each with its own ni
 
 Serving meets [Cloud Native](../../systems/09-cloud-native/README.md) infrastructure when the framework is deployed on a cluster. On Kubernetes, the NVIDIA device plugin exposes `nvidia.com/gpu` as a schedulable resource, and node selectors, taints, and `nodeAffinity` pin pods to the right GPU SKU (A100, H100, L40S). GPUs can be shared: **Multi-Instance GPU** (MIG) partitions one A100 or H100 into isolated slices, while time-slicing shares a GPU across pods for low-traffic models. **Multi-node serving** uses LeaderWorkerSet or multi-host inference for models spanning nodes, with RDMA or InfiniBand and topology-aware scheduling for the parallelism interconnect.
 
-**Autoscaling** should key on GPU-aware signals, such as queue depth, tokens per second, and KV-cache utilization, via KEDA or custom metrics, *not* CPU. Cold starts are brutal, because model weights run to tens or hundreds of gigabytes, so keep warm pools and use fast model loading: streaming from object storage, RDMA, or a local NVMe cache ([Model Loading: Hub to GPU](03-model-loading/README.md) does the math). **Operators** such as KServe, Ray, NVIDIA NIM, or KubeAI manage model deployments declaratively, with canary rollouts and scale-to-zero. The main **cost levers** are spot or preemptible GPUs with checkpointing, right-sizing the GPU to the model, and bin-packing many small models per GPU with MIG. [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment.md) builds all of this as manifests, with the arithmetic behind each field.
+**Autoscaling** should key on GPU-aware signals, such as queue depth, tokens per second, and KV-cache utilization, via KEDA or custom metrics, *not* CPU. Cold starts are brutal, because model weights run to tens or hundreds of gigabytes, so keep warm pools and use fast model loading: streaming from object storage, RDMA, or a local NVMe cache ([Model Loading: Hub to GPU](03-model-loading/README.md) does the math). **Operators** such as KServe, Ray, NVIDIA NIM, or KubeAI manage model deployments declaratively, with canary rollouts and scale-to-zero. The main **cost levers** are spot or preemptible GPUs with checkpointing, right-sizing the GPU to the model, and bin-packing many small models per GPU with MIG. [Deploying LLMs on Kubernetes](07-gpu-kubernetes-deployment/README.md) builds all of this as manifests, with the arithmetic behind each field.
 
 ## Serving metrics and SLOs
 
@@ -139,7 +147,7 @@ Each technique in this chapter targets a specific goal, and it works for a speci
 
 | Goal | Technique | Why it works |
 |------|-----------|--------------|
-| Less KV memory waste | PagedAttention | Virtual-memory-style paging, no fragmentation |
+| Less KV memory waste | PagedAttention | On-demand blocks reduce over-reservation and fragmentation |
 | More concurrent users | Continuous batching | Token-level scheduling keeps GPU full |
 | Lower attention memory | FlashAttention | Tiled, no n×n matrix in HBM |
 | Smaller footprint | Quantization (AWQ/GPTQ/FP8) | Fewer bytes → less bandwidth |
@@ -176,22 +184,22 @@ These skills are in demand across the industry: at NVIDIA (TensorRT-LLM, kernel 
 
 ## Summary
 
-- LLM inference is memory-bandwidth bound: each decode step reads all the weights plus the KV cache to produce one token per sequence.
-- Prefill is compute-bound and sets TTFT; decode is memory-bound and sets TPOT; they are scheduled and optimized differently.
+- Small-batch dense decode often depends on weight and KV bandwidth. Larger batches, long contexts, sparse experts, and distributed execution can shift the bottleneck.
+- Prefill and decode expose different shapes and resource demands; scheduling affects TTFT, ITL, and goodput.
 - The KV cache is the central data structure of serving, and PagedAttention with prefix caching is what makes production throughput possible.
-- Throughput and latency trade off through batch size; continuous batching is the single biggest practical win for serving many users.
+- Throughput and latency trade off through batch size; continuous batching can improve utilization when variable-length requests share a device, subject to latency constraints.
 - A model that does not fit on one GPU forces a parallelism choice (tensor, pipeline, or expert), each with a different communication cost.
 
 ## Review questions
 
 1. Why is decode memory-bandwidth bound while prefill is compute-bound?
-   <details><summary>Answer</summary>Prefill processes the whole prompt in one pass, so each weight read is reused across many tokens and the large matmuls saturate the GPU's compute. Decode produces one token per sequence per pass but must still read every weight and the KV cache, so the GPU spends most of its time waiting on memory.</details>
+   <details><summary>Answer</summary>For large enough dense-model prompts, prefill reuses weights across many tokens and can be compute-bound. Small-batch decode has less weight reuse and is often bandwidth-bound; large batches, long-context attention, and communication can change either limit.</details>
 2. Write the KV cache size formula and explain why GQA increases the number of concurrent users.
    <details><summary>Answer</summary>$2 \times n_\text{layers} \times n_\text{kv heads} \times d_\text{head} \times \text{seq\_len} \times \text{batch} \times \text{bytes}$, where the 2 counts K and V. GQA shares each K/V head among several query heads, reducing $n_\text{kv heads}$; a smaller cache per token means more sequences fit in the memory left after the weights.</details>
 3. How does PagedAttention reduce memory waste, and how does it let two requests share a system prompt?
-   <details><summary>Answer</summary>Contiguous per-request allocation wastes 60 to 80% of memory to fragmentation and over-reservation for the maximum length. PagedAttention allocates fixed-size blocks on demand and maps each sequence's logical blocks to arbitrary physical blocks through a block table. Two sequences with the same prefix can point at the same physical block, with a reference count of 2, freed only when both finish.</details>
+   <details><summary>Answer</summary>Contiguous per-request allocation can waste memory to fragmentation and over-reservation; the amount depends on the baseline and workload. PagedAttention allocates fixed-size blocks on demand and maps each sequence's logical blocks to arbitrary physical blocks through a block table. Two sequences with the same prefix can point at the same physical block, with a reference count of 2, freed only when both finish.</details>
 4. Why does continuous batching beat static batching on real traffic?
-   <details><summary>Answer</summary>Under static batching, the whole batch waits for its longest sequence, so finished slots sit idle. Continuous batching evicts a finished sequence and admits a new request into its slot at the next token step, keeping the GPU saturated; under variable-length traffic this is often a 5 to 20 times throughput improvement.</details>
+   <details><summary>Answer</summary>Under static batching, the whole batch waits for its longest sequence, so finished slots sit idle. Continuous batching evicts a finished sequence and admits a new request into its slot at the next token step, keeping the GPU saturated; the size of the improvement must be measured for the workload and SLO.</details>
 5. Where should tensor parallelism and pipeline parallelism be used, and why?
    <details><summary>Answer</summary>Tensor parallelism needs an all-reduce in every layer, so keep it inside one node's fast NVLink domain; it lowers latency. Pipeline parallelism only passes activations between stages, so it tolerates the slower interconnect between nodes, at the cost of pipeline bubbles.</details>
 6. For each of FlashAttention, quantization, and speculative decoding, say which resource it saves and which phase it mainly helps.

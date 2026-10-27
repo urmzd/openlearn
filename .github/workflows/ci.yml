@@ -65,6 +65,12 @@ jobs:
       - name: Verify course publication
         run: uv run pytest scripts/tests
 
+      - name: Verify training arithmetic and adaptation examples
+        run: |
+          uv run python content/courses/ai-engineering/19-training-methods/code/learning_checks.py
+          uv run python content/courses/ai-engineering/19-training-methods/code/lora_from_scratch.py
+          uv run python content/courses/ai-engineering/19-training-methods/code/dpo_loss.py
+
       - name: Verify case-study implementations
         run: |
           set -euo pipefail

@@ -53,7 +53,7 @@ Knowing how long to wait is half the problem; the other half is whether to retry
 
 Why does an exhausted activity not fail the workflow? Because exhausting retries usually means a bug or an outage, which an operator fixes and then **redrives** (`RedriveDeadLetter`, which starts again at attempt 1). Failing the workflow would throw away hours of finished steps. `ListDeadLetters` shows each dead letter with its workflow, activity, attempts, and last failure (`<system> wf dlq list data`).
 
-Activities choose their own failure type. `activity.NewNonRetryable("BadSpec", msg)` fails for good; `activity.NewError("Timeout", msg)` is retryable, with a type a policy can name. For example, the runner in [subprocess activities](09-subprocess-activities.md) maps exit code 65 to type `ExitCode65`, which policies list as non-retryable.
+Activities choose their own failure type. `activity.NewNonRetryable("BadSpec", msg)` fails for good; `activity.NewError("Timeout", msg)` is retryable, with a type a policy can name. For example, the runner in [subprocess activities](09-subprocess-activities/README.md) maps exit code 65 to type `ExitCode65`, which policies list as non-retryable.
 
 ## Timeouts and heartbeats
 
@@ -297,7 +297,7 @@ An idempotency key that is not stable per activity applies the same effect once 
 
 This section completed the protocol of [the task protocol and workers](04-task-protocol-and-workers.md): the worker reports failures and heartbeats with these RPCs, and `Info` carries the key and the details. The only mathematics was the expected value of a uniform draw, $d/2$.
 
-Looking ahead, in [deterministic replay](06-deterministic-replay.md) `ExecuteActivity` futures resolve with `ActivityTaskFailed`, and activity options carry the `RetryPolicy`. [Signals, cancellation, and sagas](08-signals-cancellation-and-sagas.md) builds cancellation on these failure and heartbeat handlers. [Subprocess activities](09-subprocess-activities.md) heartbeats checkpoint paths and maps exit codes to failure types.
+Looking ahead, in [deterministic replay](06-deterministic-replay.md) `ExecuteActivity` futures resolve with `ActivityTaskFailed`, and activity options carry the `RetryPolicy`. [Signals, cancellation, and sagas](08-signals-cancellation-and-sagas.md) builds cancellation on these failure and heartbeat handlers. [Subprocess activities](09-subprocess-activities/README.md) heartbeats checkpoint paths and maps exit codes to failure types.
 
 Production engines extend these pieces:
 

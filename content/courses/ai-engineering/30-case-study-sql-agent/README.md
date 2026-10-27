@@ -160,7 +160,7 @@ Four practices follow from the evidence:
 1. Build a private eval set on the customer's own schema. Public sets leak into training and carry errors you cannot see.
 2. Audit your own gold answers. If published benchmarks are half wrong, a hand-written set of fifty is not exempt.
 3. Report the denominator. "10/10 on ten public questions" is an honest sentence. "100% accurate" is not.
-4. Treat a verified eval set as the asset. It is the regression gate today and the reward function for fine-tuning later; see [tuning the router](../24-model-routing/README.md#tuning-the-router-a-ladder) in *AI Engineering*.
+4. Treat a verified eval set as the asset. It is the regression gate today and the reward function for fine-tuning later; see [tuning the router](../24-model-routing/04-escalation-economics-and-evaluation.md#tuning-the-router-a-ladder) in *AI Engineering*.
 
 ## The build log
 

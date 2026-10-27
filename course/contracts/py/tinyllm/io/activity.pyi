@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/io/activity.pyi (dur.09): the Python half of a subprocess activity
-# chapter: content/courses/systems/07-durable-orchestration/09-subprocess-activities.md
+# chapter: content/courses/systems/07-durable-orchestration/09-subprocess-activities/README.md
 #
 # The whole interface between the Go worker and a Python entry is
 # spec/subprocess-activity.md. This module is the helper every Python

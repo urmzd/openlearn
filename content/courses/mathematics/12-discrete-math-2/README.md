@@ -12,7 +12,7 @@ The chapter moves from structure to arithmetic to probability. It opens with dir
 
 ## Before you begin
 
-You need the sets, relations, counting, induction, and bijections of [Discrete Math 1](../11-discrete-math-1/README.md), and its [problem set](../11-discrete-math-1/03-problem-set.md) is good preparation for the proofs here. The companion textbook is *Discrete Mathematics: An Open Introduction* by Oscar Levin (https://discrete.openmathbooks.org, CC BY-SA 4.0). Levin's text is conversational and example-rich; draw every graph by hand, and check any counting formula on small cases before trusting it.
+You need the sets, relations, counting, induction, and bijections of [Discrete Math 1](../11-discrete-math-1/README.md), and its [problem set](../11-discrete-math-1/03-problem-set/README.md) is good preparation for the proofs here. The companion textbook is *Discrete Mathematics: An Open Introduction* by Oscar Levin (https://discrete.openmathbooks.org, CC BY-SA 4.0). Levin's text is conversational and example-rich; draw every graph by hand, and check any counting formula on small cases before trusting it.
 
 ## In this chapter
 
