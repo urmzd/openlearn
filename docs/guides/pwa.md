@@ -6,7 +6,7 @@ The web reader presents the same course manifests and Markdown sources as the PD
 
 As code generation gets easier, understanding, reasoning, testing, and validation become more important. The books derive mechanisms from first principles, show the worked solution, and give readers opportunities to predict a result, explain a choice, or challenge an assumption before comparing their reasoning with the answer.
 
-The interface supports that method: code, equations, and definitions remain visible alongside the explanation. Review answers keep their authored disclosure controls. Readers can pause and reason without animations hiding content or definitions requiring extra taps. A saved reading position helps them return; it does not certify understanding. See [How to read these books](../content/references/how-to-read.md) for the complete reading method and [course authoring](courses.md#teaching-principle) for writing guidance.
+The interface supports that method: code, equations, and definitions remain visible alongside the explanation. Review answers keep their authored disclosure controls. Readers can pause and reason without animations hiding content or definitions requiring extra taps. A saved reading position helps them return; it does not certify understanding. See [How to read these books](../../content/references/how-to-read.md) for the complete reading method and [course authoring](courses.md#teaching-principle) for writing guidance.
 
 ## Find a book
 
@@ -24,7 +24,7 @@ Without JavaScript, each section remains available as its own page with previous
 
 ## PDFs and device storage
 
-A PDF link appears on the shelf and book opening when `apps/web/release-assets.json` contains a matching published asset. Links point to a specific release rather than assuming a file exists in the latest release. Refresh the snapshot after publishing PDFs using the command in the [reader README](../apps/web/README.md). Download a PDF to read offline; source packs remain available from [releases](https://github.com/urmzd/openlearn/releases/latest).
+A PDF link appears on the shelf and book opening when `apps/web/release-assets.json` contains a matching published asset. Links point to a specific release rather than assuming a file exists in the latest release. Refresh the snapshot after publishing PDFs using the command in the [reader README](../../apps/web/README.md). Download a PDF to read offline; source packs remain available from [releases](https://github.com/urmzd/openlearn/releases/latest).
 
 Reading position and completion markers stay in browser storage, with no account or synchronization server. Clearing site data removes them. The current reader has no offline-course download, note editor, or progress import/export controls. Existing stored records are retained when progress is updated.
 
