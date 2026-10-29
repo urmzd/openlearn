@@ -56,7 +56,7 @@ fn main() -> tantivy::Result<()> {
     for q in ["wireless keyboard", "order 8801", "headphones"] {
         println!("Query: {q:?}");
         let query = query_parser.parse_query(q)?;
-        let top = searcher.search(&query, &TopDocs::with_limit(5))?;
+        let top = searcher.search(&query, &TopDocs::with_limit(5).order_by_score())?;
         for (score, addr) in top {
             let retrieved: TantivyDocument = searcher.doc(addr)?;
             let text = retrieved

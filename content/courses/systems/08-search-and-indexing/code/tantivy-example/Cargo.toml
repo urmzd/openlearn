@@ -9,5 +9,5 @@ description = "Tantivy (Rust, Lucene-inspired) BM25 search over a Streamflow cor
 # fetch fails -- the from-scratch examples (../bm25_from_scratch.{py,rs}) have
 # NO dependencies and run anywhere; this one demonstrates the production engine.
 [dependencies]
-tantivy = "0.22"
+tantivy = "0.27"
 tempfile = "3"
