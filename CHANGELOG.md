@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.29.2 (2026-10-29)
+
+### Bug Fixes
+
+- **deps**: patch vulnerable web dependencies (#61) ([60bf42c](https://github.com/urmzd/openlearn/commit/60bf42c016713e378b650c9e3616debb54a57f50))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.29.1...v0.29.2)
+
+
 ## 0.29.1 (2026-10-29)
 
 ### Bug Fixes
