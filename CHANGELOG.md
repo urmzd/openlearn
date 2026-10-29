@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.29.1 (2026-10-29)
+
+### Bug Fixes
+
+- **deps**: patch vulnerable dependencies (#60) ([95745a6](https://github.com/urmzd/openlearn/commit/95745a6be8195a3ea550169c688677a84a7e0981))
+
+### Misc
+
+- move docs into the scaffold-docs layout (#59) ([d181b2c](https://github.com/urmzd/openlearn/commit/d181b2cdf479ee8720760abb520f27a9aae2b5ce))
+- align README with standalone structure ([ef02b76](https://github.com/urmzd/openlearn/commit/ef02b76be4b1cc8f091d94204f05316668bcc6b7))
+- expand training-to-inference curriculum (#58) ([4a998e2](https://github.com/urmzd/openlearn/commit/4a998e2055048c3a89d3246905f33147bcf220c6))
+- add engineering acronyms chapter (#57) ([7c477de](https://github.com/urmzd/openlearn/commit/7c477de5cb4e7a82d7c823229a43c1d8a13908a3))
+- **routing**: explain API, cache, and application design (#56) ([ba070f0](https://github.com/urmzd/openlearn/commit/ba070f0d411782e06aa04d3c19a3dec2ce278441))
+- explain inference stack contracts and configuration (#55) ([2981840](https://github.com/urmzd/openlearn/commit/2981840cba83165ce4657eaffc982e47a49c8608))
+- Kubernetes inference stack: control plane, GPU path, serving, disaggregation, failover, scale (#54) ([7fd9d4d](https://github.com/urmzd/openlearn/commit/7fd9d4db71c7f80a972e8a62622e87214e810b8c))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.29.0...v0.29.1)
+
+
 ## 0.29.0 (2026-10-20)
 
 ### Features
