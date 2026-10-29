@@ -6,7 +6,7 @@
 
 - [README](https://github.com/urmzd/openlearn/blob/main/README.md): Installation, study, practice, and publishing
 - [Course catalogue](https://github.com/urmzd/openlearn/blob/main/content/courses/README.md): Available learning routes and study plans
-- [Course publication](https://github.com/urmzd/openlearn/blob/main/docs/courses.md): Manifest fields, exports, and independent websites
+- [Course publication](https://github.com/urmzd/openlearn/blob/main/docs/guides/courses.md): Manifest fields, exports, and independent websites
 - [LLM systems course](https://github.com/urmzd/openlearn/blob/main/content/courses/ai-engineering/README.md): Module sequence, interfaces, and solution walkthroughs
 - [Source register](https://github.com/urmzd/openlearn/blob/main/content/references/sources.md): Attribution, access terms, and validation evidence
 
@@ -24,5 +24,5 @@
 
 ## Optional
 
-- [PWA guide](https://github.com/urmzd/openlearn/blob/main/docs/pwa.md): Offline downloads, progress, installation, and updates
+- [PWA guide](https://github.com/urmzd/openlearn/blob/main/docs/guides/pwa.md): Offline downloads, progress, installation, and updates
 - [License](https://github.com/urmzd/openlearn/blob/main/LICENSE): Apache License 2.0

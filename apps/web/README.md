@@ -35,4 +35,4 @@ gh api repos/urmzd/openlearn/releases/latest \
 pnpm build
 ```
 
-See [course publication](../../docs/courses.md) for source packs and PDF generation.
+See [course publication](../../docs/guides/courses.md) for source packs and PDF generation.

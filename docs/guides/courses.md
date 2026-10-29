@@ -14,7 +14,7 @@ When writing or revising a section:
 4. Connect the claim to evidence: a test, boundary case, calculation, trace, or controlled failure. Explain what the check establishes and what it leaves open. A conceptual question can ask readers to design the check without executing code.
 5. Close the loop with validation: does the observed behavior meet the stated requirement? Ask readers to apply the idea to a changed case so recalling the answer alone is insufficient.
 
-Do not equate reading completion, reproduced code, or passing a narrow test suite with mastery. Describe reference solutions in terms of their constraints and tradeoffs rather than calling them universally optimal. The reader-facing method lives in [How to read these books](../content/references/how-to-read.md).
+Do not equate reading completion, reproduced code, or passing a narrow test suite with mastery. Describe reference solutions in terms of their constraints and tradeoffs rather than calling them universally optimal. The reader-facing method lives in [How to read these books](../../content/references/how-to-read.md).
 
 ## Key terms and concept previews
 
@@ -70,7 +70,7 @@ Every course is a reading course with checks of reasoning and understanding. Cha
 
 ## The Start here page
 
-A book's `README.md` is its landing page. Keep it short and practical: one paragraph on what the book is and who it is for, **What you will be able to do** (three to five outcomes), **Ways through this book** (one pace sentence, then two to four goal-based routes that name chapters and sections by number), and **Before you start** (prerequisites and related books). Do not list the chapters: the website inserts numbered chapters and section links after the opening paragraph, with Start or Continue reading and a PDF download link when a verified published asset exists. There are no separate study plans; pacing lives in the routes. How sections, review questions, and solutions work is explained once, in [How to read these books](../content/references/how-to-read.md).
+A book's `README.md` is its landing page. Keep it short and practical: one paragraph on what the book is and who it is for, **What you will be able to do** (three to five outcomes), **Ways through this book** (one pace sentence, then two to four goal-based routes that name chapters and sections by number), and **Before you start** (prerequisites and related books). Do not list the chapters: the website inserts numbered chapters and section links after the opening paragraph, with Start or Continue reading and a PDF download link when a verified published asset exists. There are no separate study plans; pacing lives in the routes. How sections, review questions, and solutions work is explained once, in [How to read these books](../../content/references/how-to-read.md).
 
 ## Numbering
 
@@ -107,13 +107,13 @@ CI builds one PDF and pack per course and attaches them to releases. Course page
 1. Write its curriculum or study plan only where it adds information beyond existing lessons.
 2. Create `content/courses/<id>/openlearn.json`, referencing existing lessons and any new chapters.
 3. Register the manifest in the root `openlearn.json` and add its PDF/zip names to `sr.yaml`.
-4. Run catalogue validation, assemble the PDF, and inspect an exported source pack. The web reader discovers the new course from the catalogue. Refresh `apps/web/release-assets.json` after publishing its PDF; see the [reader README](../apps/web/README.md).
+4. Run catalogue validation, assemble the PDF, and inspect an exported source pack. The web reader discovers the new course from the catalogue. Refresh `apps/web/release-assets.json` after publishing its PDF; see the [reader README](../../apps/web/README.md).
 
 ## Consolidated subject ownership
 
 AI Engineering combines machine learning, model and LLM construction, AI platform applications, evaluation, and responsible AI. General protocols, streaming, caching, durable execution, and deployment belong to Systems Engineering. General design patterns and authorization belong to Software Engineering.
 
-Programming and Algorithms combines language primers, type systems, algorithms, competitive programming, and practice explanations. Software Engineering combines craftsmanship, testing, maintenance, security, diagrams, and documentation. Mathematics combines introductory reasoning with the computing mathematics sequence. Worked projects live alongside their subject; the [project index](../content/references/worked-projects.md) links to all five.
+Programming and Algorithms combines language primers, type systems, algorithms, competitive programming, and practice explanations. Software Engineering combines craftsmanship, testing, maintenance, security, diagrams, and documentation. Mathematics combines introductory reasoning with the computing mathematics sequence. Worked projects live alongside their subject; the [project index](../../content/references/worked-projects.md) links to all five.
 
 The root `course_aliases` maps retired publication IDs to their new book for CLI selection. The generator uses `source-migrations.json` through `legacy-source-paths.mjs` to retain chapter URLs, image URLs, and device reading-progress keys. Retired book home pages and `/learn/<old-id>/` redirect to the consolidated home. Competitive Programming retains its former home URL as the competitive-programming chapter. Each canonical chapter appears once, and new exports use the consolidated ID.
 

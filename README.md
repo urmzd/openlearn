@@ -85,7 +85,7 @@ Install Pandoc, XeLaTeX, and Bash 4.3 or newer, then run:
 ./scripts/build-book.sh --course mathematics
 ```
 
-The result is `outputs/openlearn-mathematics.pdf`. See [course publication](docs/courses.md) for the publishing workflow and [the build script](scripts/build-book.sh) for rendering options and recommended diagram tools.
+The result is `outputs/openlearn-mathematics.pdf`. See [course publication](docs/guides/courses.md) for the publishing workflow and [the build script](scripts/build-book.sh) for rendering options and recommended diagram tools.
 
 ### Serve a course
 
@@ -107,7 +107,7 @@ Omit `OPENLEARN_COURSE` to serve the full catalogue.
 | `OPENLEARN_COURSE` | Select one course for a website build or development server |
 | `OPENLEARN_SITE_URL` | Set the public URL for an independent course deployment |
 
-See [course authoring and publication](docs/courses.md) for manifest fields.
+See [course authoring and publication](docs/guides/courses.md) for manifest fields.
 
 ## Development
 
@@ -120,8 +120,8 @@ Rebuild the website, then run `teasr run --config teasr.toml` to refresh the scr
 
 ## Documentation
 
-- [Course authoring and publication](docs/courses.md)
-- [Web reader](docs/pwa.md)
+- [Course authoring and publication](docs/guides/courses.md)
+- [Web reader](docs/guides/pwa.md)
 - [How to read these books](content/references/how-to-read.md)
 - [Source register](content/references/sources.md): attribution, resource access, and validation evidence
 
