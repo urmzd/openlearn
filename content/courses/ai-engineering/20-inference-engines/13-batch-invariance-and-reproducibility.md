@@ -79,10 +79,32 @@ In ordinary training, changing the global batch intentionally changes the gradie
 
 In PPO/GRPO, even identical weights can produce different probabilities in the rollout and learner paths if kernels, precision, or batching differ. Record actual behavior log probabilities and compare both paths on fixed tokens. Quantify the mismatch separately from policy-update KL. Batch-invariant inference can remove one source of mismatch; it does not remove stale weights, filtered sampling, or a tokenizer mismatch.
 
+### Trainer and inference engine drift
+
+An RL loop computes each token's probability twice. The inference engine computes it while sampling: one token at a time, through a KV cache, in a batch shaped by whatever else is running. The trainer computes it again while scoring: one teacher-forced pass over the whole sequence, in a batch of its own choosing, often on different kernels or at a different precision. **Trainer and inference engine drift** is the gap between those two numbers for the same weights and the same tokens.
+
+The PPO and GRPO ratio shows the cost. It divides the trainer's probability by the sampler's:
+
+$$\rho = \frac{\pi_{\text{trainer}}(a \mid s)}{\pi_{\text{sampler}}(a \mid s)}.$$
+
+Before any update the two should be equal and $\rho$ should be $1$. Suppose the sampler recorded $0.300$ for a token and the trainer computes $0.303$ from the same weights. Then $\rho = 1.01$ before the model has changed at all. The update corrects against a number that describes another computation, so the loop is no longer strictly [on-policy](../18-post-training/05-on-policy-and-off-policy.md).
+
+| Source of drift | Sampler side | Trainer side |
+|---|---|---|
+| Batch shape | Changes with load | Fixed by the data loader |
+| Attention path | Incremental, through a KV cache | Full sequence in one pass |
+| Precision and quantization | Often reduced for throughput | Often higher, with autocast |
+| LoRA adapter | Often unmerged, for hot swapping | Merged or unmerged |
+| Kernels and library versions | The serving runtime's | The training framework's |
+| Sampling transforms | Temperature, top-p, constraints | Raw log probabilities unless the trainer reapplies them |
+
+To measure it, score one fixed set of token IDs in both engines before training starts. Report the largest per-token log-probability difference and the KL divergence between the two distributions. That number is the floor of the mismatch, and it is separate from the policy-update KL that grows as the learner moves.
+
 ## Key terms
 
 - **Batch invariance**: independence of a request's result from irrelevant co-batched requests and slot placement under a specified execution contract.
 - **Reduction tree**: the grouping and order used to combine partial sums.
+- **Trainer and inference engine drift**: the difference between the probabilities the sampling engine and the trainer compute for the same weights and tokens.
 - **Replay contract**: the inputs, environment, and equality criterion promised for reproducing an execution.
 
 ## Summary
@@ -97,6 +119,22 @@ Specify the desired equality, isolate numerical differences on fixed prefixes, t
 2. Can a top-two gap of $0.01$ be reversed if every logit changes by at most $0.001$?
 
    <details><summary>Answer</summary>No at that step: the worst gap reduction is $0.002$, smaller than $0.01$. This does not establish a bound for later steps unless their prefixes and error bounds also match.</details>
+3. The sampler recorded a probability of $0.300$ for a token. The trainer, with the same weights, computes $0.303$. What is the PPO ratio before any update, and what does it show?
+
+   <details><summary>Answer</summary>$0.303 / 0.300 = 1.01$. The ratio should be $1$ at that point. The gap is trainer and inference engine drift, not a policy update, so the two engines are computing slightly different policies.</details>
+4. Why can the engine and the trainer disagree on one sequence even when both are deterministic?
+
+   <details><summary>Answer</summary>Each can repeat its own result exactly and still differ from the other. The engine decodes incrementally through a cache in a load-dependent batch, and the trainer scores the full sequence in one pass, so the reductions are grouped differently.</details>
+5. How do you measure this drift before training starts?
+
+   <details><summary>Answer</summary>Score the same fixed token IDs in both engines, then report the largest per-token log-probability difference and the KL divergence between the two distributions.</details>
+
+## Further reading
+
+- Horace He and Thinking Machines Lab, [*Defeating Nondeterminism in LLM Inference*](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/): the kernel-level account of batch-dependent results.
+- Henderson et al., [*Deep Reinforcement Learning that Matters*](https://arxiv.org/abs/1709.06560), and Engstrom et al., [*Implementation Matters in Deep Policy Gradients*](https://arxiv.org/abs/2005.12729): evidence that seeds and implementation details change RL results.
+- Espeholt et al., [IMPALA](https://arxiv.org/abs/1802.01561): an estimator designed for a learner that runs ahead of its actors.
+- Kwon et al., [PagedAttention](https://arxiv.org/abs/2309.06180): the serving design whose batching makes a request's neighbors change.
 
 ## Checks
 
