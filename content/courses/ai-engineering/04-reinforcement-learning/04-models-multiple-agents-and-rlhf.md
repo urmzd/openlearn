@@ -61,6 +61,9 @@ RL is a recurring topic in interviews, especially at AI labs and trading firms, 
 - Sutton and Barto, [*Reinforcement Learning: An Introduction*](http://incompleteideas.net/book/the-book-2nd.html), 2nd edition (free online).
 - [OpenAI Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/), including its key papers list.
 - David Silver's RL lectures (UCL), free on YouTube.
+- Primary papers on the policy-gradient methods above, all free: [PPO](https://arxiv.org/abs/1707.06347), [GAE](https://arxiv.org/abs/1506.02438), [IMPALA](https://arxiv.org/abs/1802.01561) for actor and learner lag, [GRPO in DeepSeekMath](https://arxiv.org/abs/2402.03300), and [DAPO](https://arxiv.org/abs/2503.14476).
+- On reproducing results: Henderson et al., [*Deep Reinforcement Learning that Matters*](https://arxiv.org/abs/1709.06560), and Engstrom et al., [*Implementation Matters in Deep Policy Gradients*](https://arxiv.org/abs/2005.12729). Both show that seeds and implementation details move reported results.
+- On systems that improve themselves: Zelikman et al., [*Self-Taught Optimizer (STOP)*](https://arxiv.org/abs/2310.02304); Zhang et al., [*Darwin Godel Machine*](https://arxiv.org/abs/2505.22954); Novikov et al., [*AlphaEvolve*](https://arxiv.org/abs/2506.13131); and Lu et al., [*The AI Scientist*](https://arxiv.org/abs/2408.06292). Read each for what is evaluated, what is allowed to change, and what stops the loop.
 
 ## Key terms
 

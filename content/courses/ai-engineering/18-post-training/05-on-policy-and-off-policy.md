@@ -22,6 +22,32 @@ A rollout is evidence from a particular policy. Before using it in an update, id
 
 **Offline** means learning from an existing fixed dataset without fresh environment interaction. **Online** means new data is collected during learning. An offline replay dataset is often off-policy; an online asynchronous learner can also be off-policy. DPO is typically an offline preference objective on fixed pairs, not a PPO importance-sampling update. Distillation's use of “on-policy” concerns whose generated prefixes supply its training states; the KL direction is an independent choice.
 
+## The model is the policy
+
+For a language model the state is every token so far, the action is the next token, and the policy is the distribution the system assigns to that token, $\pi_\theta(\text{token} \mid \text{context})$. Everything that determines the distribution is part of the policy:
+
+- the weights, including any [LoRA adapter](../19-training-methods/05-parameter-efficient-fine-tuning.md);
+- the sampling transforms, such as temperature and top-p;
+- the numerical execution: precision, kernels, and batching.
+
+"Same model" and "same policy" are therefore different claims. A sampler and a trainer can load identical weights and still assign different probabilities to the same token. Training that assumes one policy is then slightly off-policy without anyone having chosen that. [Batch invariance and numerical reproducibility](../20-inference-engines/13-batch-invariance-and-reproducibility.md) works an example.
+
+A noisy reward is a separate problem. A grader that returns different scores for the same rollout adds variance to the advantage, but the behavior policy is unchanged and the data is still on-policy. Diagnose the two separately: rerun the grader on fixed rollouts to measure reward noise, and rescore fixed tokens in both engines to measure policy mismatch.
+
+## Where the common methods sit
+
+| Method | Data comes from | Class | Compared against |
+|---|---|---|---|
+| SFT | A fixed dataset of demonstrations | Not RL; the model never samples | The label |
+| REINFORCE | The current model, used once | On-policy | A running-average baseline |
+| PPO | A recent snapshot, reused for a few passes | On-policy with bounded reuse | A learned critic |
+| GRPO | A recent snapshot, in groups for each prompt | On-policy with bounded reuse | The group's mean reward |
+| RFT | The current model, scored by a grader | A name for the whole sample, grade, and update loop; the algorithm underneath is usually PPO-like or GRPO-like | Depends on the implementation |
+| DPO | Fixed pairs of preferred and rejected outputs | Offline | The rejected output |
+| DQN, SAC | A replay buffer of old experience | Off-policy | Learned Q-values |
+
+SFT and DPO have no sampler in the training loop, so they cannot suffer a sampler and trainer mismatch. PPO and GRPO are where that mismatch does the most damage, because their ratio divides a trainer probability by a sampler probability.
+
 ## Work an importance correction
 
 For one state with actions $a,b$, let $\mu=[0.8,0.2]$, $\pi=[0.4,0.6]$, and action rewards $[1,3]$. Under $\mu$, an unweighted reward average tends to $1.4$. The target expectation is $2.2$. Importance weights $\pi/\mu=[0.5,3]$ recover it:
@@ -76,6 +102,15 @@ Data freshness and policy agreement are separate properties. Record behavior pro
 2. Why does a fixed seed not establish equality between rollout and training probabilities?
 
    <details><summary>Answer</summary>The seed controls random draws. Model revisions, tokenization, transforms, precision, and batch-dependent numerical computation can still differ.</details>
+3. The sampler and the trainer load the same weight file. Are they the same policy?
+
+   <details><summary>Answer</summary>Only if they assign the same probabilities. Sampling transforms, precision, kernels, batching, and a merged versus unmerged adapter can each change the distribution while the file stays the same.</details>
+4. An LLM judge gives the same rollout a different score on a rerun. Does that make training off-policy?
+
+   <details><summary>Answer</summary>No. It adds noise to the advantage, which raises gradient variance. Off-policy describes a mismatch between the behavior and target policies, and the judge changes neither.</details>
+5. Why can SFT and DPO not have a sampler and trainer mismatch?
+
+   <details><summary>Answer</summary>They train on fixed data. No sampler generates rollouts during training, so no recorded behavior probability is compared with a trainer probability.</details>
 
 ## Sources and checks
 

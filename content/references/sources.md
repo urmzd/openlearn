@@ -93,6 +93,21 @@ Primary sources checked on **2026-10-26** for the [training-to-inference route](
 
 The [learning checks](../courses/ai-engineering/19-training-methods/code/learning_checks.py) independently recompute objective values, clipping derivatives, GAE boundaries, importance correction/ESS, finite-group baseline bias, KL direction, cache sizes, and numerical counterexamples. The [local lab](../courses/ai-engineering/20-inference-engines/14-local-serving-and-validation.md) separates API, numerical, task-quality, and load evidence. Hardware-dependent recipes remain experiments for the reader's supported stack, rather than claims of tested GPU results in this repository.
 
+### Adapters, policy classes, and engine drift
+
+Added 2026-11-19 for [parameter-efficient fine-tuning](../courses/ai-engineering/19-training-methods/05-parameter-efficient-fine-tuning.md), the [policy-class sections](../courses/ai-engineering/18-post-training/05-on-policy-and-off-policy.md), and [trainer and inference engine drift](../courses/ai-engineering/20-inference-engines/13-batch-invariance-and-reproducibility.md). The arXiv identifier, title, and first author of each paper were checked against the arXiv listing on that date. The papers were not reread in full, so each lesson cites them as further reading and by topic only.
+
+| Primary source | Use and verification boundary |
+|---|---|
+| Hu et al., [LoRA](https://arxiv.org/abs/2106.09685), 2021; Aghajanyan et al., [Intrinsic Dimensionality](https://arxiv.org/abs/2012.13255), 2020 | Low-rank update and its motivation; the gradient formulas in the lesson follow from the chain rule on $h = W_0x + (\alpha/r)BAx$ |
+| Zhang et al., [AdaLoRA](https://arxiv.org/abs/2303.10512), 2023; Meng et al., [PiSSA](https://arxiv.org/abs/2404.02948), 2024; Hayou et al., [LoRA+](https://arxiv.org/abs/2402.12354), 2024; Kopiczko et al., [VeRA](https://arxiv.org/abs/2310.11454), 2023 | Named LoRA variants; no performance claim reproduced |
+| Biderman et al., [LoRA Learns Less and Forgets Less](https://arxiv.org/abs/2405.09673), 2024 | Capacity and forgetting comparison with full fine-tuning |
+| Chen et al., [Punica](https://arxiv.org/abs/2310.18547), 2023; Sheng et al., [S-LoRA](https://arxiv.org/abs/2311.03285), 2023 | Multi-LoRA serving and its cost; deployment-specific throughput must be measured |
+| Hugging Face, [PEFT LoRA reference](https://huggingface.co/docs/peft/package_reference/lora), rolling documentation | `target_modules`, `layers_to_transform`, `rank_pattern`, `alpha_pattern`, `exclude_modules`; check the installed PEFT release |
+| Henderson et al., [Deep Reinforcement Learning that Matters](https://arxiv.org/abs/1709.06560), 2017; Engstrom et al., [Implementation Matters in Deep Policy Gradients](https://arxiv.org/abs/2005.12729), 2020 | Sensitivity of RL results to seeds and implementation details |
+| Bergstra and Bengio, [Random Search](https://www.jmlr.org/papers/v13/bergstra12a.html), 2012; Li et al., [Hyperband](https://arxiv.org/abs/1603.06560), 2016; Li et al., [ASHA](https://arxiv.org/abs/1810.05934), 2018; Jaderberg et al., [Population Based Training](https://arxiv.org/abs/1711.09846), 2017; Akiba et al., [Optuna](https://arxiv.org/abs/1907.10902), 2019 | Hyperparameter sweep methods, listed as further reading |
+| Zelikman et al., [STOP](https://arxiv.org/abs/2310.02304), 2023; Zhang et al., [Darwin Godel Machine](https://arxiv.org/abs/2505.22954), 2025; Novikov et al., [AlphaEvolve](https://arxiv.org/abs/2506.13131), 2025; Lu et al., [The AI Scientist](https://arxiv.org/abs/2408.06292), 2024 | Self-improving systems, listed as further reading; no claim reproduced |
+
 ### SFT and preference-optimization variants
 
 Checked 2026-10-26 for [SFT recipes](../courses/ai-engineering/18-post-training/10-sft-recipes-and-data-strategies.md) and [preference variants](../courses/ai-engineering/18-post-training/11-preference-optimization-variants.md). These sources identify objectives and data assumptions; no universal quality ranking or local reproduction of every paper is claimed.
