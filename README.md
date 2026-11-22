@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="showcase/course-catalog.png" alt="Course catalog with alphabetically ordered courses and a search field" width="80%">
+  <img src="showcase/course-catalog.png" alt="The Openlearn library page with a book search field and a list of free technical books" width="80%">
 </p>
 
 ## Features
