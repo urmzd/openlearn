@@ -75,6 +75,11 @@
       "dir": "content/courses/software-engineering/13-engineering-acronyms",
       "title": "Engineering Acronyms",
       "part": "Explain and document"
+    },
+    {
+      "dir": "content/courses/software-engineering/14-developer-experience",
+      "title": "Developer Experience",
+      "part": "Explain and document"
     }
   ],
   "reference": [

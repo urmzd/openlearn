@@ -17,6 +17,7 @@ Read the parts in order for the full progression, or choose a route below and fo
 - **Designing and testing:** [The Pragmatic Programmer](01-pragmatic-programmer/README.md), then [The Testing Mentality](03-testing/README.md), then [Coding and Design Patterns](04-design-patterns/README.md).
 - **Maintaining and delivering:** [Code Review and CI](06-code-review-and-ci/README.md), then [Releases and Deprecation](07-releases-and-deprecation/README.md), then [Maintenance](08-maintenance/README.md).
 - **Securing and explaining:** [Security](09-security/README.md), then [Authorization and Access Control](10-authorization/README.md), then [Diagramming with the C4 Model](11-diagramming/README.md), then [Documentation Writing](12-documentation/README.md).
+- **Designing for developers and agents:** [Developer Experience](14-developer-experience/README.md), chapter 14, studies how people review an agent's work and learn an API by editing it.
 - **Learning the team's vocabulary:** [Engineering Acronyms](13-engineering-acronyms/README.md), chapter 13, explains everyday terms through decisions, goals, reliability targets, and vendor work. Start here when those terms are unfamiliar.
 
 ## Before you start
