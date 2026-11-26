@@ -31,6 +31,8 @@ const BASE = '';
 const GITHUB = 'https://github.com/urmzd/openlearn';
 // Verified release assets: omit downloads for books without a published PDF.
 const releaseAssets = JSON.parse(fs.readFileSync(path.join(SITE, 'release-assets.json'), 'utf8'));
+// The Lucide download glyph, as in the shelf and the book menu.
+const DOWNLOAD_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path><path d="M12 15V3"></path></svg>';
 const pdfOf = (id) => releaseAssets.find((asset) => asset.name === `openlearn-${id}.pdf`)?.url;
 
 const selected = process.env.OPENLEARN_COURSE;
@@ -359,7 +361,7 @@ for (const { course, chapters } of outlines) {
 		`<section class="book-actions" data-course="${course.id}" aria-label="This book">`,
 		`<p><span data-course-progress="${course.id}">${total} sections</span></p>`,
 		...(first ? [`<a class="primary" data-begin="${course.id}" href="${routeOf(first)}">Start reading</a>`] : []),
-		...(pdfOf(course.id) ? [`<a class="pdf-link" href="${pdfOf(course.id)}">Download PDF</a>`] : []),
+		...(pdfOf(course.id) ? [`<a class="button" href="${pdfOf(course.id)}">${DOWNLOAD_ICON}Download PDF</a>`] : []),
 		'</section>',
 	].join('');
 	const contents = chapterParts(numbered).map((part) => `${part.title ? `\n\n### ${part.title}\n\n` : ''}${part.chapters.map((c) => {
@@ -427,7 +429,7 @@ for (const { manifest: course, documents } of publications) {
 }
 for (const [id, { route }] of glossaries) {
 	const book = landing.get(bookHome.get(id));
-	if (book) book.actions = book.actions.replace('</section>', `<a class="pdf-link" href="${route}">Glossary</a></section>`);
+	if (book) book.actions = book.actions.replace('</section>', `<a class="button" href="${route}">Glossary</a></section>`);
 }
 
 for (const [f, { title, body: original }] of pages) {
@@ -528,6 +530,7 @@ const library = {
 		description: course.tagline ?? blurb(course.start?.[0]?.file) ?? course.tracks.map((t) => t.title).slice(0, 3).join(', '),
 		href: homeOf(course.id),
 		pdf: pdfOf(course.id),
+		glossary: glossaries.get(course.id)?.route,
 		// `chapter` groups lessons so the reader can scroll through one chapter
 		// and pause at the next chapter's opening.
 		lessons: reading.flatMap((section, i) => section.files.filter((f) => sources.includes(f)).map((f) => ({

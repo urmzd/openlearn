@@ -5,6 +5,18 @@ import { startConcepts, startGlossary } from './concepts.mjs';
 startConcepts();
 startGlossary();
 
+// The book menu closes on Escape, on a choice and on a press outside it.
+for (const menu of document.querySelectorAll('details.menu')) {
+  const close = () => { menu.open = false; };
+  menu.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !menu.open) return;
+    close();
+    menu.querySelector('summary').focus();
+  });
+  menu.addEventListener('focusout', (event) => { if (!menu.contains(event.relatedTarget)) close(); });
+  document.addEventListener('pointerdown', (event) => { if (!menu.contains(event.target)) close(); });
+}
+
 let state = emptyState();
 try {
   const saved = localStorage.getItem(STORAGE_KEY);

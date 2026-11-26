@@ -128,10 +128,37 @@ h1 { font-size: clamp(2rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -.0
 .sl-markdown-content th { font-weight: 700; }
 .sl-markdown-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; padding-block: .6rem; }
 .sl-markdown-content blockquote { padding-inline-start: 1.25rem; border-inline-start: 2px solid var(--book-rule); color: var(--book-muted); }
-.sl-markdown-content details { padding: .75rem 0; border-block: 1px solid var(--book-rule); }
-.sl-markdown-content summary { cursor: pointer; font-weight: 600; }
 .sl-markdown-content pre.mermaid { background: transparent; border: none; overflow-x: auto; text-align: center; }
 .sl-markdown-content pre.mermaid svg { max-width: 100%; height: auto; }
+
+/* Disclosures: a bordered row that opens in place. The chevron turns. */
+.sl-markdown-content details { padding: 0 .9rem; border: 1px solid var(--book-rule); border-radius: .5rem; background: var(--book-paper); }
+.sl-markdown-content details:hover, .sl-markdown-content details:has(> summary:hover) { border-color: var(--book-rule); }
+.sl-markdown-content details > summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: 0 -.9rem; padding: .55rem .9rem; border-radius: .5rem; font-size: .875rem; font-weight: 500; cursor: pointer; }
+.sl-markdown-content details > summary:hover { background: var(--book-hover); }
+.sl-markdown-content details > summary::before { content: none; }
+.sl-markdown-content details > summary::after { content: ''; flex: none; width: 1rem; height: 1rem; background: var(--book-muted); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; transition: transform .15s; }
+.sl-markdown-content details[open] > summary::after { transform: rotate(180deg); }
+.sl-markdown-content details[open] { padding-bottom: .75rem; }
+.sl-markdown-content details[open] > summary { margin-bottom: .75rem; border-bottom: 1px solid var(--book-rule); border-radius: .5rem .5rem 0 0; }
+
+/* Buttons and the book menu. */
+.button, .check-prompt { display: inline-flex; align-items: center; gap: .5rem; min-height: 2.25rem; padding: .4rem .8rem; border: 1px solid var(--book-rule); border-radius: .5rem; background: var(--book-paper); color: var(--book-ink) !important; box-shadow: 0 1px 2px #0000000d; font: inherit; font-size: .875rem; font-weight: 500; line-height: 1.25; text-decoration: none; cursor: pointer; }
+.button:hover, .check-prompt:hover { background: var(--book-hover); }
+:is(.button, .check-prompt, .book-meta a, .menu summary) svg { flex: none; width: 1rem; height: 1rem; }
+.menu { position: relative; }
+.menu summary { display: inline-flex; align-items: center; gap: .25rem; min-height: 2.75rem; color: var(--book-muted); list-style: none; cursor: pointer; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu summary:hover, .menu[open] summary { color: var(--book-ink); }
+.menu[open] summary svg { transform: rotate(180deg); }
+.menu-panel { position: absolute; z-index: 3; inset: calc(100% - .25rem) auto auto 0; display: grid; min-width: 12rem; padding: .25rem; border: 1px solid var(--book-rule); border-radius: .5rem; background: var(--book-paper); box-shadow: 0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a; }
+.book-context .menu-panel a { display: flex; min-height: 2.25rem; padding: .35rem .6rem; border-radius: .3rem; color: var(--book-ink); font-size: .875rem; text-decoration: none; }
+.book-context .menu-panel a:hover, .book-context .menu-panel a:focus-visible { background: var(--book-hover); }
+
+/* Review questions: copy a prompt, then open the answer. */
+.sl-markdown-content .exercise-method { color: var(--book-muted); font-size: .9375rem; }
+.sl-markdown-content .check-prompt { display: flex; width: fit-content; margin-block: .75rem .5rem; }
+.sl-markdown-content li > .check-prompt + details { margin-top: 0; }
 
 /* Menu: the current section carries the green marker. */
 #starlight__sidebar { scrollbar-width: thin; }
@@ -164,7 +191,8 @@ h1 { font-size: clamp(2rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -.0
 .book-description { color: var(--book-muted); font-size: .9375rem; line-height: 1.5; }
 .book-list .book-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 1rem 0 0; font-size: .8125rem; }
 .book-meta span { margin-inline-end: .25rem; color: var(--book-muted); }
-.book-meta a { position: relative; padding: .17rem .65rem; border: 1px solid var(--book-rule); border-radius: 2rem; background: var(--book-chip); color: var(--book-muted); text-decoration: none; }
+.book-meta a svg { width: .875rem; height: .875rem; }
+.book-meta a { position: relative; display: inline-flex; align-items: center; gap: .35rem; padding: .17rem .65rem; border: 1px solid var(--book-rule); border-radius: 2rem; background: var(--book-chip); color: var(--book-muted); text-decoration: none; }
 .book-meta a:hover { color: var(--book-ink); text-decoration: underline; }
 .continue-card { display: grid; gap: .25rem; margin-block: 1.5rem 0; padding: 1rem 1.5rem; border: 1px solid var(--book-rule); border-radius: .875rem; background: var(--book-card); box-shadow: inset 2px 0 var(--book-green); text-decoration: none; }
 .continue-card:hover { background: var(--book-hover); }
@@ -172,13 +200,12 @@ h1 { font-size: clamp(2rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -.0
 .continue-card strong { font-size: 1.125rem; font-weight: 600; color: var(--book-ink); }
 
 /* A book's front page and its reader. */
-.book-context { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .8125rem; }
+.book-context { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .6rem; color: var(--book-muted); font-size: .875rem; }
 .book-context a { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--book-muted); text-underline-offset: .17em; }
 .book-context a:hover { color: var(--book-ink); }
-.book-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.5rem; margin-block: 1.5rem 2rem; font-size: .875rem; }
+.book-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-block: 1.5rem 2rem; font-size: .875rem; }
 .book-actions p { flex-basis: 100%; margin: 0 !important; color: var(--book-muted); }
-.primary { display: inline-block; padding: .6rem 1rem; border: 1px solid var(--book-ink); border-radius: .5rem; background: var(--book-ink); color: var(--book-paper) !important; font-weight: 500; text-decoration: none; }
-.pdf-link { display: inline-flex; align-items: center; min-height: 2.75rem; }
+.primary { display: inline-flex; align-items: center; min-height: 2.25rem; padding: .4rem .9rem; font-size: .875rem; line-height: 1.25; border: 1px solid var(--book-ink); border-radius: .5rem; background: var(--book-ink); color: var(--book-paper) !important; font-weight: 500; text-decoration: none; }
 .sl-markdown-content .contents-chapter { padding-block: 1rem; border-bottom: 1px solid var(--book-rule); }
 .sl-markdown-content .contents-chapter :is(h3, h4) { margin: 0; font-size: 1.125rem; }
 .contents-chapter :is(h3, h4) a { color: var(--book-ink); text-decoration: none; }
@@ -201,7 +228,7 @@ h1 { font-size: clamp(2rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -.0
   .book-heading { padding-block: 1rem 0; }
   .sl-markdown-content .expressive-code { font-size: .78rem; }
   .book-list .book { padding: 1.25rem; }
-  .book-meta a { display: inline-flex; align-items: center; min-height: 2rem; }
+  .book-meta a { min-height: 2rem; }
   .reader-section { margin-top: 3rem; padding-top: 2rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
@@ -217,11 +244,8 @@ h1 { font-size: clamp(2rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -.0
    a section lists every concept borrowed from another section. */
 .sl-markdown-content a.term { color: inherit; text-decoration-line: underline; text-decoration-style: dotted; text-decoration-color: var(--book-green); text-decoration-thickness: 1.5px; text-underline-offset: .25em; }
 .sl-markdown-content a.term:hover { color: var(--book-green); }
-.sl-markdown-content details.concepts { margin-block: 1.5rem; padding: .75rem 1rem; border: 1px solid var(--book-rule); border-radius: .5rem; background: var(--book-card); font-size: .93em; }
-.sl-markdown-content details.concepts summary { font-size: .875rem; color: var(--book-muted); min-height: 2rem; }
-.sl-markdown-content details.concepts summary { list-style: none; }
-.sl-markdown-content details.concepts summary::-webkit-details-marker { display: none; }
-.sl-markdown-content details.concepts[open] summary { margin-bottom: .5rem; }
+.sl-markdown-content details.concepts { margin-block: 1.5rem; padding: 0 .9rem; border: 1px solid var(--book-rule); border-radius: .5rem; background: var(--book-card); font-size: .93em; }
+.sl-markdown-content details.concepts > summary { color: var(--book-muted); }
 .sl-markdown-content details.concepts > p { font-size: .9em; color: var(--book-muted); }
 .sl-markdown-content details.concepts ul { padding-inline-start: 1.1rem; }
 .concept-source { display: block; margin-top: .15rem; font-size: .8125rem; color: var(--book-muted); }
@@ -242,7 +266,7 @@ h1 { font-size: clamp(2rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -.0
 .concept-definition .katex-display { overflow-x: auto; }
 .concept-close { position: absolute; top: .4rem; right: .4rem; width: 2.75rem; height: 2.75rem; border: 0; background: transparent; color: var(--book-muted); font-size: 1.5rem; line-height: 1; cursor: pointer; }
 .concept-close:hover { color: var(--book-ink); }
-@media print { .sl-markdown-content details.concepts { display: none; } .sl-markdown-content a.term { text-decoration: none; } }
+@media print { .check-prompt, .exercise-method, .menu { display: none !important; } .sl-markdown-content details.concepts { display: none; } .sl-markdown-content a.term { text-decoration: none; } }
 .glossary-filter { display: grid; gap: .5rem; margin-block: 1.5rem 1rem; font-size: .875rem; font-weight: 500; }
 .sl-markdown-content .glossary-filter p { margin: 0; font-weight: 400; font-size: .8125rem; color: var(--book-muted); }
 .glossary-letters { display: flex; flex-wrap: wrap; gap: .1rem .25rem; font-size: .9rem; }

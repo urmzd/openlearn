@@ -3,11 +3,20 @@ import DefaultTitle from '@astrojs/starlight/components/PageTitle.astro';
 import library from '../generated/library.json';
 const course = library.courses.find((book) => book.href === Astro.url.pathname)
   ?? library.courses.find((book) => book.lessons.some((lesson) => lesson.url === Astro.url.pathname));
+const reading = course && course.href !== Astro.url.pathname;
 ---
-<div class="book-heading">
+<div class="book-heading" data-book-title={course?.title}>
 {course && <nav class="book-context" aria-label="Book">
   <a href="/">Library</a>
-  {course.href !== Astro.url.pathname && <a href={course.href}>{course.title}: contents</a>}
+  {reading && <span aria-hidden="true">/</span>}
+  {reading && <details class="menu">
+    <summary>{course.title}<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></summary>
+    <div class="menu-panel">
+      <a href={course.href}>Contents</a>
+      {course.glossary && <a href={course.glossary}>Glossary</a>}
+      {course.pdf && <a href={course.pdf}>Download PDF</a>}
+    </div>
+  </details>}
 </nav>}
 <DefaultTitle />
 </div>

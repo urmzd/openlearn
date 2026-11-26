@@ -30,8 +30,7 @@ const groups = [
               </a>
               <div class="book-meta">
                 <span>{course.lessons.length} sections</span>
-                <a href={course.href} aria-label={`Read ${course.title}`}>Read</a>
-                {course.pdf && <a href={course.pdf} aria-label={`Download ${course.title} PDF`}>PDF</a>}
+                {course.pdf && <a href={course.pdf} aria-label={`Download ${course.title} PDF`}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path><path d="M12 15V3"></path></svg>PDF</a>}
               </div>
             </li>
           ))}
