@@ -141,6 +141,15 @@ end
 local function wrap_inlines(inlines)
   local result = pandoc.List()
   local i, n = 1, #inlines
+  -- Inside a left-to-right sentence, the sentence punctuation that follows
+  -- a right-to-left run belongs to the sentence, not to the run.
+  local mixed = false
+  for _, el in ipairs(inlines) do
+    if el.t == "Str" and classify(el.text) == "ltr" then
+      mixed = true
+      break
+    end
+  end
   while i <= n do
     local el = inlines[i]
     if el.t == "Str" and classify(el.text) == "rtl" then
@@ -168,7 +177,16 @@ local function wrap_inlines(inlines)
       end
       local run = {}
       for k = i, last do run[#run + 1] = inlines[k] end
+      local trailing = nil
+      if mixed then
+        local body, tail = run[#run].text:match("^(.-)([%?%!%.,:;]+)$")
+        if tail and classify(body) == "rtl" then
+          run[#run] = pandoc.Str(body)
+          trailing = tail
+        end
+      end
       result:insert(pandoc.RawInline("latex", "\\RLtext{" .. render_run(run) .. "}"))
+      if trailing then result:insert(pandoc.Str(trailing)) end
       i = last + 1
     elseif el.t == "Str" and has_rtl_digit(el.text) then
       -- A lone number in Arabic-script digits still needs the Arabic font.
