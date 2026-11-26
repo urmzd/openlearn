@@ -31,98 +31,98 @@ The Tajik column gives the Tajik word. The Notes column gives the word in Iran a
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| thank you | ташаккур | تشکر | @ | Iran: ممنون (mamnun), مرسی (mersi). Dari: تشکر |
-| yes | ҳа | ها | @ | Iran: بله (bale), آره (āre). Dari: بلی (bale) |
-| good | нағз | نغز | @ | Iran: خوب (khub). Dari: خوب |
-| big | калон | کلان | @ | Iran: بزرگ (bozorg). Dari: کلان |
-| small | хурд | خرد | @ | Iran: کوچک (kuchak). Dari: خرد |
-| to speak | гап задан | گپ زدن | @ | Iran: حرف زدن (harf zadan). Dari: گپ زدن |
-| how | чӣ хел | چه خیل | @ | Iran: چطور (chetor). Dari: چطور |
-| now | ҳозир | حاضر | @ | Iran: الان (al'ān). Dari: حالی (hāli) |
-| tomorrow | пагоҳ | پگاه | @ | Iran: فردا (fardā). Dari: صباح (sabā) |
-| tired | монда | مانده | @ | Iran: خسته (khaste). Dari: مانده |
-| ill | касал | کسل | @ | Iran: مریض (mariz). Dari: مریض |
-| cold | хунук | خنک | @ | Iran: سرد (sard). Dari: خنک |
-| clean | тоза | تازه | @ | Iran: تمیز (tamiz). Dari: پاک (pāk) |
-| dirty | чиркин | چرکین | @ | Spoken: ифлос. Iran: کثیف (kasif). Dari: چتل (chatal) |
-| beautiful | хушрӯ | خوشرو | @ | Iran: خوشگل (khoshgel). Dari: مقبول (maqbul) |
-| expensive | қимат | قیمت | @ | Iran: گران (gerān). Dari: قیمت |
-| upset | хафа | خفه | @ | Iran: ناراحت (nārāhat). Dari: خفه |
-| all right, OK | майлаш | میلش | @ | Iran: باشه (bāshe). Dari: درست (dorost) |
-| very | бисёр | بسیار | @ | Iran: خیلی (kheyli). Dari: بسیار |
-| goodbye | хайр | خیر | @ | Iran: خداحافظ (khodāhāfez). Dari: خدا حافظ |
-| I like it | ба ман маъқул аст | به من معقول است | @ | Iran: دوست دارم (dust dāram). Dari: خوشم می آید (khosham miāya) |
-| money | пул | پول | @ | Same in Iran. Dari: پیسه (paysa) |
+| thank you | ташаккур | تشکر | tashakkur | Iran: ممنون (mamnun), مرسی (mersi). Dari: تشکر |
+| yes | ҳа | ها | ha | Iran: بله (bale), آره (āre). Dari: بلی (bale) |
+| good | нағз | نغز | naghz | Iran: خوب (khub). Dari: خوب |
+| big | калон | کلان | kalon | Iran: بزرگ (bozorg). Dari: کلان |
+| small | хурд | خرد | khurd | Iran: کوچک (kuchak). Dari: خرد |
+| to speak | гап задан | گپ زدن | gap zadan | Iran: حرف زدن (harf zadan). Dari: گپ زدن |
+| how | чӣ хел | چه خیل | chī khel | Iran: چطور (chetor). Dari: چطور |
+| now | ҳозир | حاضر | hozir | Iran: الان (al'ān). Dari: حالی (hāli) |
+| tomorrow | пагоҳ | پگاه | pagoh | Iran: فردا (fardā). Dari: صباح (sabā) |
+| tired | монда | مانده | monda | Iran: خسته (khaste). Dari: مانده |
+| ill | касал | کسل | kasal | Iran: مریض (mariz). Dari: مریض |
+| cold | хунук | خنک | khunuk | Iran: سرد (sard). Dari: خنک |
+| clean | тоза | تازه | toza | Iran: تمیز (tamiz). Dari: پاک (pāk) |
+| dirty | чиркин | چرکین | chirkin | Spoken: ифлос. Iran: کثیف (kasif). Dari: چتل (chatal) |
+| beautiful | хушрӯ | خوشرو | khushrū | Iran: خوشگل (khoshgel). Dari: مقبول (maqbul) |
+| expensive | қимат | قیمت | qimat | Iran: گران (gerān). Dari: قیمت |
+| upset | хафа | خفه | khafa | Iran: ناراحت (nārāhat). Dari: خفه |
+| all right, OK | майлаш | میلش | maylash | Iran: باشه (bāshe). Dari: درست (dorost) |
+| very | бисёр | بسیار | bisyor | Iran: خیلی (kheyli). Dari: بسیار |
+| goodbye | хайр | خیر | khayr | Iran: خداحافظ (khodāhāfez). Dari: خدا حافظ |
+| I like it | ба ман маъқул аст | به من معقول است | ba man ma'qul ast | Iran: دوست دارم (dust dāram). Dari: خوشم می آید (khosham miāya) |
+| money | пул | پول | pul | Same in Iran. Dari: پیسه (paysa) |
 
 ### Food and the Table
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| breakfast | наҳорӣ | نهاری | @ | Iran: صبحانه (sobhāne). Dari: چای صبح (chāy-e sobh) |
-| lunch | хӯроки пешин | خوراک پیشین | @ | Iran: ناهار (nāhār). Dari: نان چاشت (nān-e chāsht) |
-| tomato | помидор | پامیدار | @ | Iran: گوجه فرنگی (goje farangi). Dari: بادنجان رومی (bādenjān-e rumi) |
-| potato | картошка | کارتاشکا | @ | Iran: سیب زمینی (sib-zamini). Dari: کچالو (kachālu) |
-| cucumber | бодиринг | بادرنگ | @ | Iran: خیار (khiyār). Dari: بادرنگ |
-| carrot | сабзӣ | سبزی | @ | Iran: هویج (havij). Dari: زردک (zardak) |
-| watermelon | тарбуз | تربوز | @ | Iran: هندوانه (hendavāne). Dari: تربوز |
-| yogurt | ҷурғот | جرغات | @ | Iran: ماست (māst). Dari: ماست |
-| butter | маска | مسکه | @ | Iran: کره (kare). Dari: مسکه |
-| juice | афшура | افشره | @ | Spoken: сок. Iran: آبمیوه (ābmive) |
-| ice cream | яхмос | یخ ماس | @ | Iran: بستنی (bastani). Dari: شیریخ (shiryakh) |
-| drinking glass | истакон | استکان | @ | Iran: لیوان (livān). Dari: گیلاس (gelās) |
-| plate | табақ | طبق | @ | Iran: بشقاب (boshghāb). Dari: بشقاب |
-| fork | чангак | چنگک | @ | Spoken: вилка. Iran: چنگال (changāl). Dari: پنجه (panja) |
+| breakfast | наҳорӣ | نهاری | nahorī | Iran: صبحانه (sobhāne). Dari: چای صبح (chāy-e sobh) |
+| lunch | хӯроки пешин | خوراک پیشین | khūroki peshin | Iran: ناهار (nāhār). Dari: نان چاشت (nān-e chāsht) |
+| tomato | помидор | پامیدار | pomidor | Iran: گوجه فرنگی (goje farangi). Dari: بادنجان رومی (bādenjān-e rumi) |
+| potato | картошка | کارتاشکا | kartoshka | Iran: سیب زمینی (sib-zamini). Dari: کچالو (kachālu) |
+| cucumber | бодиринг | بادرنگ | bodiring | Iran: خیار (khiyār). Dari: بادرنگ |
+| carrot | сабзӣ | سبزی | sabzī | Iran: هویج (havij). Dari: زردک (zardak) |
+| watermelon | тарбуз | تربوز | tarbuz | Iran: هندوانه (hendavāne). Dari: تربوز |
+| yogurt | ҷурғот | جرغات | jurghot | Iran: ماست (māst). Dari: ماست |
+| butter | маска | مسکه | maska | Iran: کره (kare). Dari: مسکه |
+| juice | афшура | افشره | afshura | Spoken: сок. Iran: آبمیوه (ābmive) |
+| ice cream | яхмос | یخ ماس | yakhmos | Iran: بستنی (bastani). Dari: شیریخ (shiryakh) |
+| drinking glass | истакон | استکان | istakon | Iran: لیوان (livān). Dari: گیلاس (gelās) |
+| plate | табақ | طبق | tabaq | Iran: بشقاب (boshghāb). Dari: بشقاب |
+| fork | чангак | چنگک | changak | Spoken: вилка. Iran: چنگال (changāl). Dari: پنجه (panja) |
 
 ### Home and Clothes
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| room | ҳуҷра | حجره | @ | Iran: اتاق (otāgh). Dari: اتاق |
-| chair | курсӣ | کرسی | @ | Iran: صندلی (sandali). Dari: چوکی (chawki) |
-| bed | кат | کت | @ | Iran: تخت (takht). Dari: چپرکت (chaparkat) |
-| window | тиреза | تیریزه | @ | Iran: پنجره (panjare). Dari: کلکین (kelkin) |
-| towel | сачоқ | سچاق | @ | Iran: حوله (hole). Dari: روی پاک (ruypāk) |
-| fridge | яхдон | یخدان | @ | Spoken: холодильник. Iran: یخچال (yakhchāl) |
-| toilet | ҳоҷатхона | حاجتخانه | @ | Iran: دستشویی (dastshuyi). Dari: تشناب (tashnāb) |
-| bag, sack | халта | خلته | @ | Iran: کیسه (kise). Dari: خریطه (kharita) |
-| shoes | пойафзол | پای افزار | @ | Iran: کفش (kafsh). Dari: بوت (but) |
-| trousers | шим | شیم | @ | Iran: شلوار (shalvār). Dari: پتلون (patlun) |
-| red | сурх | سرخ | @ | Iran: قرمز (ghermez). Dari: سرخ |
-| blue | кабуд | کبود | @ | Iran: آبی (ābi). Dari: آبی |
-| pink | гулобӣ | گلابی | @ | Iran: صورتی (surati). Dari: گلابی |
+| room | ҳуҷра | حجره | hujra | Iran: اتاق (otāgh). Dari: اتاق |
+| chair | курсӣ | کرسی | kursī | Iran: صندلی (sandali). Dari: چوکی (chawki) |
+| bed | кат | کت | kat | Iran: تخت (takht). Dari: چپرکت (chaparkat) |
+| window | тиреза | تیریزه | tireza | Iran: پنجره (panjare). Dari: کلکین (kelkin) |
+| towel | сачоқ | سچاق | sachoq | Iran: حوله (hole). Dari: روی پاک (ruypāk) |
+| fridge | яхдон | یخدان | yakhdon | Spoken: холодильник. Iran: یخچال (yakhchāl) |
+| toilet | ҳоҷатхона | حاجتخانه | hojatkhona | Iran: دستشویی (dastshuyi). Dari: تشناب (tashnāb) |
+| bag, sack | халта | خلته | khalta | Iran: کیسه (kise). Dari: خریطه (kharita) |
+| shoes | пойафзол | پای افزار | poyafzol | Iran: کفش (kafsh). Dari: بوت (but) |
+| trousers | шим | شیم | shim | Iran: شلوار (shalvār). Dari: پتلون (patlun) |
+| red | сурх | سرخ | surkh | Iran: قرمز (ghermez). Dari: سرخ |
+| blue | кабуд | کبود | kabud | Iran: آبی (ābi). Dari: آبی |
+| pink | гулобӣ | گلابی | gulobī | Iran: صورتی (surati). Dari: گلابی |
 
 ### City and Travel
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| train | қатора | قطاره | @ | Spoken: поезд. Iran: قطار (ghatār). Dari: ریل (rel) |
-| station | вокзал | واکزال | @ | Iran: ایستگاه (istgāh) |
-| airport | фурудгоҳ | فرودگاه | @ | Same in Iran. Dari: میدان هوایی (maydān-e hawāyi) |
-| car | мошин | ماشین | @ | Same in Iran. Dari: موتر (motar) |
-| ticket | чипта | چپته | @ | Iran: بلیت (belit). Dari: تکت (tiket) |
-| street | кӯча | کوچه | @ | Iran: خیابان (khiyābān). Dari: سرک (sarak) |
-| hospital | беморхона | بیمارخانه | @ | Iran: بیمارستان (bimārestān). Dari: شفاخانه (shafākhāna) |
-| hotel | меҳмонхона | مهمانخانه | @ | Iran: هتل (hotel). Dari: هوتل (hotal) |
-| passport | шиноснома | شناسنامه | @ | Iran: گذرنامه (gozarnāme). Dari: پاسپورت (pāsport) |
-| river | дарё | دریا | @ | Iran: رودخانه (rudkhāne). Dari: دریا |
-| sea | баҳр | بحر | @ | Iran: دریا (daryā). Dari: بحر |
-| police | милиса | میلیسه | @ | Iran: پلیس (polis). Dari: پولیس (polis) |
-| lift | лифт | لیفت | @ | Iran: آسانسور (āsānsor). Dari: لفت (left) |
+| train | қатора | قطاره | qatora | Spoken: поезд. Iran: قطار (ghatār). Dari: ریل (rel) |
+| station | вокзал | واکزال | vokzal | Iran: ایستگاه (istgāh) |
+| airport | фурудгоҳ | فرودگاه | furudgoh | Same in Iran. Dari: میدان هوایی (maydān-e hawāyi) |
+| car | мошин | ماشین | moshin | Same in Iran. Dari: موتر (motar) |
+| ticket | чипта | چپته | chipta | Iran: بلیت (belit). Dari: تکت (tiket) |
+| street | кӯча | کوچه | kūcha | Iran: خیابان (khiyābān). Dari: سرک (sarak) |
+| hospital | беморхона | بیمارخانه | bemorkhona | Iran: بیمارستان (bimārestān). Dari: شفاخانه (shafākhāna) |
+| hotel | меҳмонхона | مهمانخانه | mehmonkhona | Iran: هتل (hotel). Dari: هوتل (hotal) |
+| passport | шиноснома | شناسنامه | shinosnoma | Iran: گذرنامه (gozarnāme). Dari: پاسپورت (pāsport) |
+| river | дарё | دریا | daryo | Iran: رودخانه (rudkhāne). Dari: دریا |
+| sea | баҳр | بحر | bahr | Iran: دریا (daryā). Dari: بحر |
+| police | милиса | میلیسه | milisa | Iran: پلیس (polis). Dari: پولیس (polis) |
+| lift | лифт | لیفت | lift | Iran: آسانسور (āsānsor). Dari: لفت (left) |
 
 ### Work and Study
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| school | мактаб | مکتب | @ | Iran: مدرسه (madrese). Dari: مکتب |
-| university | донишгоҳ | دانشگاه | @ | Same in Iran. Dari: پوهنتون (pohantun) |
-| meeting | маҷлис | مجلس | @ | Iran: جلسه (jalase). Dari: جلسه |
-| project | лоиҳа | لایحه | @ | Iran: پروژه (porozhe). Dari: پروژه |
-| contract | шартнома | شرطنامه | @ | Iran: قرارداد (gharārdād). Dari: قرارداد |
-| salary | маош | معاش | @ | Iran: حقوق (hoghugh). Dari: معاش |
-| leave, holiday from work | рухсатӣ | رخصتی | @ | Iran: مرخصی (morakhkhasi). Dari: رخصتی |
-| percent | фоиз | فایض | @ | Iran: درصد (darsad). Dari: فیصد (fisad) |
-| website | сомона | سامانه | @ | Iran: وب سایت (vebsāyt) |
-| computer | компютер | کامپیوتر | @ | Iran also: رایانه (rāyāne). Dari: کمپیوتر (kampyutar) |
+| school | мактаб | مکتب | maktab | Iran: مدرسه (madrese). Dari: مکتب |
+| university | донишгоҳ | دانشگاه | donishgoh | Same in Iran. Dari: پوهنتون (pohantun) |
+| meeting | маҷлис | مجلس | majlis | Iran: جلسه (jalase). Dari: جلسه |
+| project | лоиҳа | لایحه | loiha | Iran: پروژه (porozhe). Dari: پروژه |
+| contract | шартнома | شرطنامه | shartnoma | Iran: قرارداد (gharārdād). Dari: قرارداد |
+| salary | маош | معاش | maosh | Iran: حقوق (hoghugh). Dari: معاش |
+| leave, holiday from work | рухсатӣ | رخصتی | rukhsatī | Iran: مرخصی (morakhkhasi). Dari: رخصتی |
+| percent | фоиз | فایض | foiz | Iran: درصد (darsad). Dari: فیصد (fisad) |
+| website | сомона | سامانه | somona | Iran: وب سایت (vebsāyt) |
+| computer | компютер | کامپیوتر | kompyuter | Iran also: رایانه (rāyāne). Dari: کمپیوتر (kampyutar) |
 
 ---
 
@@ -132,34 +132,34 @@ These words exist in both countries with different meanings. They cause the most
 
 | Tajik | Persian script | Transliteration | Meaning in Tajikistan | Meaning in Iran |
 |-------|----------------|-----------------|-----------------------|-----------------|
-| хафа | خفه | @ | upset, offended | choked. As an order it is a rude "be quiet" |
-| бекор | بیکار | @ | cancelled, or idle | unemployed |
-| дарё | دریا | @ | river | sea |
-| сабзӣ | سبزی | @ | carrot | herbs, greens |
-| гулобӣ | گلابی | @ | pink | pear |
-| пахта | پخته | @ | cotton | cooked |
-| ош | آش | @ | plov, or food in general | thick soup |
-| наҳорӣ | نهاری | @ | breakfast | the related word ناهار is lunch |
-| маъқул | معقول | @ | pleasing, liked | reasonable |
-| ҳозир | حاضر | @ | now | present, ready |
-| тоза | تازه | @ | clean, fresh | fresh, new |
-| илтимос | التماس | @ | please | begging |
-| вайрон | ویران | @ | broken, out of order | ruined, in ruins |
-| шиноснома | شناسنامه | @ | passport | birth certificate |
-| корхона | کارخانه | @ | enterprise, firm | factory |
-| лоиҳа | لایحه | @ | project, draft | bill of law |
-| хунук | خنک | @ | cold | cool, or "not funny" |
-| тирамоҳ | تیرماه | @ | autumn | the month of Tir, in summer |
-| таклиф | تکلیف | @ | invitation, proposal | duty, homework |
-| қимат | قیمت | @ | expensive | price |
-| касал | کسل | @ | ill | listless, bored |
-| шарманда | شرمنده | @ | disgraced | a polite "sorry" or "I am in your debt" |
-| шамол | شمال | @ | wind | north |
-| сомона | سامانه | @ | website | system |
-| давлат | دولت | @ | the state, the country | the government |
-| маҷлис | مجلس | @ | meeting | parliament, formal gathering |
-| дафтар | دفتر | @ | notebook | office, and notebook |
-| мактаб | مکتب | @ | school | old religious school, school of thought |
+| хафа | خفه | khafa | upset, offended | choked. As an order it is a rude "be quiet" |
+| бекор | بیکار | bekor | cancelled, or idle | unemployed |
+| дарё | دریا | daryo | river | sea |
+| сабзӣ | سبزی | sabzī | carrot | herbs, greens |
+| гулобӣ | گلابی | gulobī | pink | pear |
+| пахта | پخته | pakhta | cotton | cooked |
+| ош | آش | osh | plov, or food in general | thick soup |
+| наҳорӣ | نهاری | nahorī | breakfast | the related word ناهار is lunch |
+| маъқул | معقول | ma'qul | pleasing, liked | reasonable |
+| ҳозир | حاضر | hozir | now | present, ready |
+| тоза | تازه | toza | clean, fresh | fresh, new |
+| илтимос | التماس | iltimos | please | begging |
+| вайрон | ویران | vayron | broken, out of order | ruined, in ruins |
+| шиноснома | شناسنامه | shinosnoma | passport | birth certificate |
+| корхона | کارخانه | korkhona | enterprise, firm | factory |
+| лоиҳа | لایحه | loiha | project, draft | bill of law |
+| хунук | خنک | khunuk | cold | cool, or "not funny" |
+| тирамоҳ | تیرماه | tiramoh | autumn | the month of Tir, in summer |
+| таклиф | تکلیف | taklif | invitation, proposal | duty, homework |
+| қимат | قیمت | qimat | expensive | price |
+| касал | کسل | kasal | ill | listless, bored |
+| шарманда | شرمنده | sharmanda | disgraced | a polite "sorry" or "I am in your debt" |
+| шамол | شمال | shamol | wind | north |
+| сомона | سامانه | somona | website | system |
+| давлат | دولت | davlat | the state, the country | the government |
+| маҷлис | مجلس | majlis | meeting | parliament, formal gathering |
+| дафтар | دفتر | daftar | notebook | office, and notebook |
+| мактаб | مکتب | maktab | school | old religious school, school of thought |
 
 ---
 
@@ -188,20 +188,20 @@ Tajiks address people by a family word, not by "Mr" and "Ms". Use the word that 
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| older brother, a man a little older than you | ака | اکه | @ | From Uzbek. Iran: آقا (āghā) |
-| older sister, a woman a little older than you | апа | اپه | @ | From Uzbek. Iran: خانم (khānom) |
-| uncle, a man of your father's age | амак | عمک | @ | Iran: عمو (amu) |
-| aunt, a woman of your mother's age | хола | خاله | @ | Same in Iran |
-| grandfather, an old man | бобо | بابا | @ | In Iran بابا means "dad" |
-| grandmother, an old woman | бибӣ | بی بی | @ | Iran: مادربزرگ (mādarbozorg) |
-| younger brother, a younger man | додар | دادر | @ | Tajik word. Iran: برادر (barādar) |
-| my son, my daughter (to a young person) | писарам, духтарам | پسرم، دخترم | @ | Said by an older person. Same in Iran |
-| master, teacher (title of respect) | устод | استاد | @ | Same in Iran |
-| teacher | муаллим | معلم | @ | Also a polite title for an educated person |
-| Mr, sir | ҷаноб | جناب | @ | Formal. Iran: آقای (āghā-ye) before a name |
-| Ms, madam | хонум | خانم | @ | Formal. Same in Iran |
-| dear (after a name) | Фирӯзҷон | فیروزجان | @ | -ҷон shows warmth. Same in Iran |
-| respected | муҳтарам | محترم | @ | In speeches and letters |
+| older brother, a man a little older than you | ака | اکه | aka | From Uzbek. Iran: آقا (āghā) |
+| older sister, a woman a little older than you | апа | اپه | apa | From Uzbek. Iran: خانم (khānom) |
+| uncle, a man of your father's age | амак | عمک | amak | Iran: عمو (amu) |
+| aunt, a woman of your mother's age | хола | خاله | khola | Same in Iran |
+| grandfather, an old man | бобо | بابا | bobo | In Iran بابا means "dad" |
+| grandmother, an old woman | бибӣ | بی بی | bibī | Iran: مادربزرگ (mādarbozorg) |
+| younger brother, a younger man | додар | دادر | dodar | Tajik word. Iran: برادر (barādar) |
+| my son, my daughter (to a young person) | писарам, духтарам | پسرم، دخترم | pisaram, dukhtaram | Said by an older person. Same in Iran |
+| master, teacher (title of respect) | устод | استاد | ustod | Same in Iran |
+| teacher | муаллим | معلم | muallim | Also a polite title for an educated person |
+| Mr, sir | ҷаноб | جناب | janob | Formal. Iran: آقای (āghā-ye) before a name |
+| Ms, madam | хонум | خانم | khonum | Formal. Same in Iran |
+| dear (after a name) | Фирӯзҷон | فیروزجان | Firūzjon | -ҷон shows warmth. Same in Iran |
+| respected | муҳтарам | محترم | muhtaram | In speeches and letters |
 
 ---
 
@@ -211,22 +211,22 @@ A greeting is a short exchange with fixed parts. Give the reply that fits.
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| Peace be upon you | Ассалому алайкум | السلام علیکم | @ | Reply: Ваалайкум ассалом |
-| How are you? | Шумо чӣ хел? | شما چه خیل؟ | @ | Reply: Нағз, раҳмат. Худатон чӣ хел? |
-| How is your health? | Саломатиатон чӣ тавр? | سلامتیتان چه طور؟ | @ | Reply: Шукр, хуб |
-| Is your family well? | Аҳли хона саломат? | اهل خانه سلامت؟ | @ | Reply: Шукр, ҳама саломат |
-| Do not be tired | Монда нашавед | مانده نشوید | @ | Reply: Саломат бошед |
-| Welcome | Хуш омадед | خوش آمدید | @ | Reply: Саломат бошед |
-| Thank you | Раҳмат | رحمت | @ | Reply: Намеарзад |
-| May your hands not hurt | Дастатон дард накунад | دستتان درد نکند | @ | Reply after food: Ош шавад |
-| Goodbye | Хайр | خیر | @ | Reply: Хайр, саломат бошед |
-| Good night | Шаби хуш | شب خوش | @ | Reply: Шаби хуш |
-| Happy holiday | Иди шумо муборак | عید شما مبارک | @ | Reply: Иди шумо ҳам муборак |
-| Happy Navruz | Наврӯз муборак | نوروز مبارک | @ | 21 March. Same in Iran and Afghanistan |
-| Safe journey | Роҳи сафед | راه سفید | @ | Reply: Саломат бошед |
-| Bless you (after a sneeze) | Саломат бошед | سلامت باشید | @ | Reply: Раҳмат |
-| May God give healing | Худо шифо диҳад | خدا شفا دهد | @ | To a sick person. Reply: Омин, раҳмат |
-| May God have mercy | Худо раҳмат кунад | خدا رحمت کند | @ | About a dead person. Reply: Омин |
+| Peace be upon you | Ассалому алайкум | السلام علیکم | Assalomu alaykum | Reply: Ваалайкум ассалом |
+| How are you? | Шумо чӣ хел? | شما چه خیل؟ | Shumo chī khel? | Reply: Нағз, раҳмат. Худатон чӣ хел? |
+| How is your health? | Саломатиатон чӣ тавр? | سلامتیتان چه طور؟ | Salomatiaton chī tavr? | Reply: Шукр, хуб |
+| Is your family well? | Аҳли хона саломат? | اهل خانه سلامت؟ | Ahli khona salomat? | Reply: Шукр, ҳама саломат |
+| Do not be tired | Монда нашавед | مانده نشوید | Monda nashaved | Reply: Саломат бошед |
+| Welcome | Хуш омадед | خوش آمدید | Khush omaded | Reply: Саломат бошед |
+| Thank you | Раҳмат | رحمت | Rahmat | Reply: Намеарзад |
+| May your hands not hurt | Дастатон дард накунад | دستتان درد نکند | Dastaton dard nakunad | Reply after food: Ош шавад |
+| Goodbye | Хайр | خیر | Khayr | Reply: Хайр, саломат бошед |
+| Good night | Шаби хуш | شب خوش | Shabi khush | Reply: Шаби хуш |
+| Happy holiday | Иди шумо муборак | عید شما مبارک | Idi shumo muborak | Reply: Иди шумо ҳам муборак |
+| Happy Navruz | Наврӯз муборак | نوروز مبارک | Navrūz muborak | 21 March. Same in Iran and Afghanistan |
+| Safe journey | Роҳи сафед | راه سفید | Rohi safed | Reply: Саломат бошед |
+| Bless you (after a sneeze) | Саломат бошед | سلامت باشید | Salomat boshed | Reply: Раҳмат |
+| May God give healing | Худо шифо диҳад | خدا شفا دهد | Khudo shifo dihad | To a sick person. Reply: Омин, раҳмат |
+| May God have mercy | Худо раҳмат кунад | خدا رحمت کند | Khudo rahmat kunad | About a dead person. Reply: Омин |
 
 How the greeting runs in practice:
 
@@ -258,16 +258,16 @@ A guest is honoured. The host offers the best food and the best seat, far from t
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| Please, come in | Марҳамат, дароед | مرحمت، درآیید | @ | Host |
-| Sit higher up | Ба боло гузаред | به بالا گذرید | @ | Host. The place of honour is far from the door |
-| Please, help yourself | Марҳамат, гиред | مرحمت، گیرید | @ | Host. Repeated many times |
-| You went to much trouble | Заҳмат кашидед | زحمت کشیدید | @ | Guest |
-| It is nothing | Ҳеҷ гап не | هیچ گپ نه | @ | Host's reply |
-| Do not stand on ceremony | Такаллуф накунед | تکلف نکنید | @ | Host. Iran: تعارف نکنید (ta'ārof nakonid) |
-| We troubled you | Шуморо ташвиш додем | شما را تشویش دادیم | @ | Guest, when leaving |
-| Come again | Боз биёед | باز بیایید | @ | Host |
-| May your home prosper | Хонаатон обод | خانه تان آباد | @ | Guest's thanks |
-| This small gift is for you | Ин туҳфаи ночиз барои шумост | این تحفه ی ناچیز برای شماست | @ | Giving a gift. Never arrive with empty hands |
+| Please, come in | Марҳамат, дароед | مرحمت، درآیید | Marhamat, daroyed | Host |
+| Sit higher up | Ба боло гузаред | به بالا گذرید | Ba bolo guzared | Host. The place of honour is far from the door |
+| Please, help yourself | Марҳамат, гиред | مرحمت، گیرید | Marhamat, gired | Host. Repeated many times |
+| You went to much trouble | Заҳмат кашидед | زحمت کشیدید | Zahmat kashided | Guest |
+| It is nothing | Ҳеҷ гап не | هیچ گپ نه | Hej gap ne | Host's reply |
+| Do not stand on ceremony | Такаллуф накунед | تکلف نکنید | Takalluf nakuned | Host. Iran: تعارف نکنید (ta'ārof nakonid) |
+| We troubled you | Шуморо ташвиш додем | شما را تشویش دادیم | Shumoro tashvish dodem | Guest, when leaving |
+| Come again | Боз биёед | باز بیایید | Boz biyoyed | Host |
+| May your home prosper | Хонаатон обод | خانه تان آباد | Khonaaton obod | Guest's thanks |
+| This small gift is for you | Ин туҳфаи ночиз барои шумост | این تحفه ی ناچیز برای شماست | In tuhfai nochiz baroi shumost | Giving a gift. Never arrive with empty hands |
 
 ### Taarof in Iran
 
@@ -302,26 +302,26 @@ Russian was the language of school, the army and the office for seventy years. E
 
 | Meaning | Spoken | Tajik | Persian script | Transliteration |
 |---------|--------|-------|----------------|-----------------|
-| train | поезд | қатора | قطاره | @ |
-| aeroplane | самолёт | ҳавопаймо | هواپیما | @ |
-| stop | остановка | истгоҳ | ایستگاه | @ |
-| hospital | больница | беморхона | بیمارخانه | @ |
-| pharmacy | аптека | дорухона | داروخانه | @ |
-| fridge | холодильник | яхдон | یخدان | @ |
-| table | стол | миз | میز | @ |
-| chair | стул | курсӣ | کرسی | @ |
-| pen | ручка | қалам | قلم | @ |
-| document | документ | ҳуҷҷат | حجت | @ |
-| queue, turn | очередь | навбат | نوبت | @ |
-| salary | зарплата | маош | معاش | @ |
-| leave from work | отпуск | рухсатӣ | رخصتی | @ |
-| problem | проблема | мушкилӣ | مشکلی | @ |
-| of course | конечно | албатта | البته | @ |
-| in general | вообще | умуман | عموماً | @ |
-| that means, so | значит | яъне | یعنی | @ |
-| all right | ладно | майлаш | میلش | @ |
-| already | уже | аллакай | الله کی | @ |
-| just, simply | просто | фақат | فقط | @ |
+| train | поезд | қатора | قطاره | qatora |
+| aeroplane | самолёт | ҳавопаймо | هواپیما | havopaymo |
+| stop | остановка | истгоҳ | ایستگاه | istgoh |
+| hospital | больница | беморхона | بیمارخانه | bemorkhona |
+| pharmacy | аптека | дорухона | داروخانه | dorukhona |
+| fridge | холодильник | яхдон | یخدان | yakhdon |
+| table | стол | миз | میز | miz |
+| chair | стул | курсӣ | کرسی | kursī |
+| pen | ручка | қалам | قلم | qalam |
+| document | документ | ҳуҷҷат | حجت | hujjat |
+| queue, turn | очередь | навбат | نوبت | navbat |
+| salary | зарплата | маош | معاش | maosh |
+| leave from work | отпуск | рухсатӣ | رخصتی | rukhsatī |
+| problem | проблема | мушкилӣ | مشکلی | mushkilī |
+| of course | конечно | албатта | البته | albatta |
+| in general | вообще | умуман | عموماً | umuman |
+| that means, so | значит | яъне | یعنی | ya'ne |
+| all right | ладно | майлаш | میلش | maylash |
+| meeting | собрание | маҷлис | مجلس | majlis |
+| just, simply | просто | фақат | فقط | faqat |
 
 How to handle code switching:
 
@@ -339,16 +339,16 @@ Tajiks and Uzbeks have lived in the same cities for centuries. Northern Tajik di
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| older brother | ака | اکه | @ | Iran: برادر بزرگ (barādar-e bozorg) |
-| older sister | апа | اپه | @ | Iran: خواهر بزرگ (khāhar-e bozorg) |
-| village | қишлоқ | قشلاق | @ | Written also: деҳа. Iran: روستا (rustā) |
-| wedding, feast | тӯй | طوی | @ | Iran: عروسی (arusi). Dari: طوی |
-| cream | қаймоқ | قیماق | @ | Iran: خامه (khāme). Dari: قیماق |
-| ticket | чипта | چپته | @ | Iran: بلیت (belit) |
-| towel | сачоқ | سچاق | @ | Iran: حوله (hole) |
-| OK, all right | хӯп | خوب | @ | Spoken: хоп. From the Persian word хуб, through Uzbek |
-| spoon | қошуқ | قاشق | @ | A Turkic word that Iran uses too |
-| scissors | қайчӣ | قیچی | @ | A Turkic word that Iran uses too |
+| older brother | ака | اکه | aka | Iran: برادر بزرگ (barādar-e bozorg) |
+| older sister | апа | اپه | apa | Iran: خواهر بزرگ (khāhar-e bozorg) |
+| village | қишлоқ | قشلاق | qishloq | Written also: деҳа. Iran: روستا (rustā) |
+| wedding, feast | тӯй | طوی | tūy | Iran: عروسی (arusi). Dari: طوی |
+| cream | қаймоқ | قیماق | qaymoq | Iran: خامه (khāme). Dari: قیماق |
+| ticket | чипта | چپته | chipta | Iran: بلیت (belit) |
+| towel | сачоқ | سچاق | sachoq | Iran: حوله (hole) |
+| OK, all right | хуб | خوب | khub | Spoken: хоп, хӯп. The spoken form came back into Tajik through Uzbek |
+| spoon | қошуқ | قاشق | qoshuq | A Turkic word that Iran uses too |
+| scissors | қайчӣ | قیچی | qaychī | A Turkic word that Iran uses too |
 
 Grammar habits of northern speech that come from contact with Uzbek:
 
@@ -374,41 +374,41 @@ Grammar habits of northern speech that come from contact with Uzbek:
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| yes | ҳа | ها | @ | Say in Iran: بله (bale) |
-| thanks | раҳмат | رحمت | @ | Say in Iran: ممنون (mamnun), مرسی (mersi) |
-| good | нағз | نغز | @ | Say in Iran: خوب (khub) |
-| big | калон | کلان | @ | Say in Iran: بزرگ (bozorg) |
-| to speak | гап задан | گپ زدن | @ | Say in Iran: صحبت کردن (sohbat kardan) |
-| how | чӣ хел | چه خیل | @ | Say in Iran: چطور (chetor) |
-| now | ҳозир | حاضر | @ | Say in Iran: الان (al'ān) |
-| tomorrow | пагоҳ | پگاه | @ | Say in Iran: فردا (fardā) |
-| cold | хунук | خنک | @ | Say in Iran: سرد (sard) |
-| tired | монда | مانده | @ | Say in Iran: خسته (khaste) |
-| ill | касал | کسل | @ | Say in Iran: مریض (mariz) |
-| expensive | қимат | قیمت | @ | Say in Iran: گران (gerān) |
-| room | ҳуҷра | حجره | @ | Say in Iran: اتاق (otāgh) |
-| street | кӯча | کوچه | @ | Say in Iran: خیابان (khiyābān) |
-| hospital | беморхона | بیمارخانه | @ | Say in Iran: بیمارستان (bimārestān) |
-| breakfast | наҳорӣ | نهاری | @ | Say in Iran: صبحانه (sobhāne) |
-| please (request) | илтимос | التماس | @ | Say in Iran: لطفاً (lotfan) |
-| here you are | марҳамат | مرحمت | @ | Say in Iran: بفرمایید (befarmāyid) |
-| upset | хафа | خفه | @ | Say in Iran: ناراحت (nārāhat) |
-| I like it | ба ман маъқул аст | به من معقول است | @ | Say in Iran: دوست دارم (dust dāram) |
+| yes | ҳа | ها | ha | Say in Iran: بله (bale) |
+| thanks | раҳмат | رحمت | rahmat | Say in Iran: ممنون (mamnun), مرسی (mersi) |
+| good | нағз | نغز | naghz | Say in Iran: خوب (khub) |
+| big | калон | کلان | kalon | Say in Iran: بزرگ (bozorg) |
+| to speak | гап задан | گپ زدن | gap zadan | Say in Iran: صحبت کردن (sohbat kardan) |
+| how | чӣ хел | چه خیل | chī khel | Say in Iran: چطور (chetor) |
+| now | ҳозир | حاضر | hozir | Say in Iran: الان (al'ān) |
+| tomorrow | пагоҳ | پگاه | pagoh | Say in Iran: فردا (fardā) |
+| cold | хунук | خنک | khunuk | Say in Iran: سرد (sard) |
+| tired | монда | مانده | monda | Say in Iran: خسته (khaste) |
+| ill | касал | کسل | kasal | Say in Iran: مریض (mariz) |
+| expensive | қимат | قیمت | qimat | Say in Iran: گران (gerān) |
+| room | ҳуҷра | حجره | hujra | Say in Iran: اتاق (otāgh) |
+| street | кӯча | کوچه | kūcha | Say in Iran: خیابان (khiyābān) |
+| hospital | беморхона | بیمارخانه | bemorkhona | Say in Iran: بیمارستان (bimārestān) |
+| breakfast | наҳорӣ | نهاری | nahorī | Say in Iran: صبحانه (sobhāne) |
+| please (request) | илтимос | التماس | iltimos | Say in Iran: لطفاً (lotfan) |
+| here you are | марҳамат | مرحمت | marhamat | Say in Iran: بفرمایید (befarmāyid) |
+| upset | хафа | خفه | khafa | Say in Iran: ناراحت (nārāhat) |
+| I like it | ба ман маъқул аст | به من معقول است | ba man ma'qul ast | Say in Iran: دوست دارم (dust dāram) |
 
 ### Phrases for Talking Across the Border
 
 | English | Tajik | Persian script | Transliteration | Notes |
 |---------|-------|----------------|-----------------|-------|
-| I am Tajik | Ман тоҷик ҳастам | من تاجیک هستم | @ | |
-| I am from Tajikistan | Ман аз Тоҷикистон ҳастам | من از تاجیکستان هستم | @ | |
-| Our language is one | Забони мо як аст | زبان ما یک است | @ | A warm thing to say. Iran: زبان ما یکی است (zabān-e mā yeki ast) |
-| I do not know this word | Ман ин калимаро намедонам | من این کلمه را نمی دانم | @ | |
-| What do they call this in Iran? | Дар Эрон инро чӣ мегӯянд? | در ایران این را چه می گویند؟ | @ | |
-| In Tajikistan we say [word] | Дар Тоҷикистон мо [калима] мегӯем | در تاجیکستان ما [کلمه] می گوییم | @ | |
-| Please speak the written language | Лутфан, бо забони адабӣ гап занед | لطفاً، با زبان ادبی گپ زنید | @ | Iran: لطفاً کتابی صحبت کنید (lotfan ketābi sohbat konid) |
-| I cannot read Persian script yet | Ман ҳоло хати форсиро хонда наметавонам | من حالا خط فارسی را خوانده نمی توانم | @ | |
-| Can you write it in Latin letters? | Метавонед бо ҳарфҳои лотинӣ нависед? | می توانید با حرف های لاتینی نویسید؟ | @ | |
-| We write in Cyrillic | Мо бо хати кириллӣ менависем | ما با خط کیریلی می نویسیم | @ | |
+| I am Tajik | Ман тоҷик ҳастам | من تاجیک هستم | Man tojik hastam |  |
+| I am from Tajikistan | Ман аз Тоҷикистон ҳастам | من از تاجیکستان هستم | Man az Tojikiston hastam |  |
+| Our language is one | Забони мо як аст | زبان ما یک است | Zaboni mo yak ast | A warm thing to say. Iran: زبان ما یکی است (zabān-e mā yeki ast) |
+| I do not know this word | Ман ин калимаро намедонам | من این کلمه را نمی دانم | Man in kalimaro namedonam |  |
+| What do they call this in Iran? | Дар Эрон инро чӣ мегӯянд? | در ایران این را چه می گویند؟ | Dar Eron inro chī megūyand? |  |
+| In Tajikistan we say [word] | Дар Тоҷикистон мо [калима] мегӯем | در تاجیکستان ما [کلمه] می گوییم | Dar Tojikiston mo [kalima] megūyem |  |
+| Please speak the written language | Лутфан, бо забони адабӣ гап занед | لطفاً، با زبان ادبی گپ زنید | Lutfan, bo zaboni adabī gap zaned | Iran: لطفاً کتابی صحبت کنید (lotfan ketābi sohbat konid) |
+| I cannot read Persian script yet | Ман ҳоло хати форсиро хонда наметавонам | من حالا خط فارسی را خوانده نمی توانم | Man holo khati forsiro khonda nametavonam |  |
+| Can you write it in Latin letters? | Метавонед бо ҳарфҳои лотинӣ нависед? | می توانید با حرف های لاتینی نویسید؟ | Metavoned bo harfhoi lotinī navised? |  |
+| We write in Cyrillic | Мо бо хати кириллӣ менависем | ما با خط کیریلی می نویسیم | Mo bo khati kirillī menavisem |  |
 
 ---
 

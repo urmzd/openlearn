@@ -179,6 +179,36 @@ This chapter covers hotels, guesthouses, rented flats and a stay in a family hom
 
 ---
 
+## Booking by Phone or Message
+
+| English | Tajik | Persian script | Transliteration | Notes |
+|---------|-------|----------------|-----------------|-------|
+| I want to reserve a room from the fifth to the eighth of May | Ман мехоҳам аз панҷум то ҳаштуми май ҳуҷра банд кунам | من می خواهم از پنجم تا هشتم مای حجره بند کنم | Man mekhoham az panjum to hashtumi may hujra band kunam | Iran: رزرو کنم (rezerv konam) |
+| For two adults and one child | Барои ду калонсол ва як кӯдак | برای دو کلانسال و یک کودک | Baroi du kalonsol va yak kūdak | Iran: بزرگسال (bozorgsāl) |
+| What is the total price? | Нархи умумӣ чанд аст? | نرخ عمومی چند است؟ | Narkhi umumī chand ast? | Iran: قیمت کل (gheymat-e kol) |
+| Must I pay in advance? | Пешакӣ пардохт кардан лозим аст? | پیشکی پرداخت کردن لازم است؟ | Peshakī pardokht kardan lozim ast? |  |
+| Is it possible to cancel? | Бекор кардан мумкин аст? | بیکار کردن ممکن است؟ | Bekor kardan mumkin ast? | Iran: لغو کردن (laghv kardan) |
+| We will arrive late at night | Мо шаб дер мерасем | ما شب دیر می رسیم | Mo shab der merasem |  |
+| Can you meet us at the airport? | Метавонед моро дар фурудгоҳ пешвоз гиред? | می توانید ما را در فرودگاه پیشواز گیرید؟ | Metavoned moro dar furudgoh peshvoz gired? | Iran: به استقبال ما بیایید (be esteghbāl-e mā biyāyid) |
+| Please confirm that the room is reserved | Лутфан, тасдиқ кунед, ки ҳуҷра банд шуд | لطفاً، تصدیق کنید، که حجره بند شد | Lutfan, tasdiq kuned, ki hujra band shud |  |
+
+---
+
+## Signs in a Hotel
+
+| English | Tajik | Persian script | Transliteration | Notes |
+|---------|-------|----------------|-----------------|-------|
+| Reception | Қабулгоҳ | قبولگاه | Qabulgoh | Iran: پذیرش (paziresh) |
+| Do not disturb | Халал нарасонед | خلل نرسانید | Khalal narasoned | Iran: مزاحم نشوید (mozāhem nashavid) |
+| Please clean the room | Ҳуҷраро тоза кунед | حجره را تازه کنید | Hujraro toza kuned |  |
+| Dining room | Ошхона | آشخانه | Oshkhona | Iran: سالن غذاخوری (sālon-e ghazākhori) |
+| Staff only | Танҳо барои кормандон | تنها برای کارمندان | Tanho baroi kormandon |  |
+| Emergency exit | Баромадгоҳи эҳтиётӣ | برآمدگاه احتیاطی | Baromadgohi ehtiyotī | Iran: خروج اضطراری (khoruj-e ezterāri) |
+| Stairs | Зина | زینه | Zina | Iran: پله (pelle). Dari: زینه |
+| Pool | Ҳавз | حوض | Havz | Iran: استخر (estakhr) |
+
+---
+
 ## Model Dialogue: Check-in
 
 Read the dialogue aloud in each script. A is a guest. B works at the reception.

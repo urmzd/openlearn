@@ -191,6 +191,37 @@ This chapter covers taxis, city buses, trains, airports, borders and the road. T
 
 ---
 
+## Signs and Announcements
+
+### Signs at a Station or Airport
+
+| English | Tajik | Persian script | Transliteration | Notes |
+|---------|-------|----------------|-----------------|-------|
+| Departure | Парвоз | پرواز | Parvoz | Airport. Iran: پروازهای خروجی (parvāzhā-ye khoruji) |
+| Arrival | Фуруд | فرود | Furud | Airport. Iran: پروازهای ورودی (parvāzhā-ye vorudi) |
+| Tickets | Чиптаҳо | چپته ها | Chiptaho | Spoken: касса. Iran: بلیت فروشی (belitforushi) |
+| Waiting hall | Толори интизорӣ | تالار انتظاری | Tolori intizorī | Iran: سالن انتظار (sālon-e entezār) |
+| Information | Маълумот | معلومات | Ma'lumot | Iran: اطلاعات (ettelā'āt) |
+| Luggage storage | Нигоҳдории бор | نگاهداری بار | Nigohdorii bor | Iran: امانات (amānāt) |
+| Track one | Роҳи якум | راه یکم | Rohi yakum | Iran: سکوی یک (sakku-ye yek) |
+| Exit to the city | Баромад ба шаҳр | برآمد به شهر | Baromad ba shahr |  |
+
+### Announcements You Will Hear
+
+| English | Tajik | Persian script | Transliteration | Notes |
+|---------|-------|----------------|-----------------|-------|
+| Attention, please | Диққат, лутфан | دقت، لطفاً | Diqqat, lutfan | Iran: توجه فرمایید (tavajjoh farmāyid) |
+| The train to Khujand leaves from track two | Қатора ба Хуҷанд аз роҳи дуюм ҳаракат мекунад | قطاره به خجند از راه دوم حرکت می کند | Qatora ba Khujand az rohi duyum harakat mekunad |  |
+| Boarding for flight [number] has begun | Саворшавӣ ба парвози [рақам] сар шуд | سوارشوی به پرواز [رقم] سر شد | Savorshavī ba parvozi [raqam] sar shud |  |
+| We ask passengers to go to gate three | Аз мусофирон хоҳиш мекунем, ки ба дарвозаи сеюм раванд | از مسافران خواهش می کنیم، که به دروازه ی سوم روند | Az musofiron khohish mekunem, ki ba darvozai seyum ravand | Formal |
+| The flight is delayed by one hour | Парвоз як соат таъхир дорад | پرواز یک ساعت تأخیر دارد | Parvoz yak soat ta'khir dorad |  |
+| Next stop: [name] | Истгоҳи оянда: [ном] | ایستگاه آینده: [نام] | Istgohi oyanda: [nom] | In a bus or trolleybus |
+| Last stop, please get off | Истгоҳи охирин, лутфан, пиёда шавед | ایستگاه آخرین، لطفاً، پیاده شوید | Istgohi okhirin, lutfan, piyoda shaved |  |
+| Please prepare your documents | Лутфан, ҳуҷҷатҳоятонро тайёр кунед | لطفاً، حجت هایتان را تیار کنید | Lutfan, hujjathoyatonro tayyor kuned | Iran: مدارک (madārek) |
+| Please show your ticket | Лутфан, чиптаатонро нишон диҳед | لطفاً، چپته تان را نشان دهید | Lutfan, chiptaatonro nishon dihed |  |
+
+---
+
 ## Model Dialogue: A Taxi to the Airport
 
 Read the dialogue aloud in each script. A is a passenger. B is a driver.

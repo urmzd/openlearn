@@ -431,7 +431,7 @@ Each cell shows a word and its Tajik reading.
 
 | Letter | At the start | In the middle | At the end |
 |--------|--------------|---------------|------------|
-| ا | اسب (asp) | نان (non) | ما (mo) |
+| ا | ابر (abr) | نان (non) | ما (mo) |
 | ب | باد (bod) | کباب (kabob) | شب (shab) |
 | پ | پدر (padar) | تپه (teppa) | چپ (chap) |
 | ت | تو (tu) | کتاب (kitob) | دست (dast) |
@@ -554,7 +554,7 @@ Three letters write the stable vowels. Each one also has a second job as a conso
 | ا | The vowel о, in the middle and at the end | нон | نان | non | bread |
 | ا | The vowel о, in the middle and at the end | мо | ما | mo | we |
 | آ | The vowel о at the start of a word | об | آب | ob | water |
-| ا | A carrier for a short vowel at the start | асп | اسب | asp | horse |
+| ا | A carrier for a short vowel at the start | абр | ابر | abr | cloud |
 | ا | A carrier for a short vowel at the start | имрӯз | امروز | imrūz | today |
 | ا | A carrier for a short vowel at the start | устод | استاد | ustod | master |
 | و | The consonant в | вақт | وقت | vaqt | time |
@@ -856,7 +856,7 @@ A heritage speaker is strong in the first direction. Reading Persian script alou
 | Cyrillic | Persian letter | Tajik | Persian script | Transliteration | Notes |
 |----------|----------------|-------|----------------|-----------------|-------|
 | а | Not written | дар | در | dar | Inside a word |
-| а | ا | асп | اسب | asp | At the start of a word |
+| а | ا | абр | ابر | abr | At the start of a word |
 | а | ه | хона | خانه | khona | At the end of a word |
 | а | ع | азиз | عزیز | aziz | At the start of some Arabic words |
 | б | ب | бародар | برادر | barodar |  |
@@ -1036,6 +1036,9 @@ The rules of thumb fail for these words. Learn each one as a whole shape.
 | doctor | духтур | دکتر | dukhtur | A loan with its own spelling in each script |
 | station, stop | истгоҳ | ایستگاه | istgoh | Starts with ای |
 | money | пул | پول | pul | Money is پول. Bridge is پل |
+| none, any | ҳеҷ | هیچ | hej | The Persian spelling has چ, not ج |
+| service | хизмат | خدمت | khizmat | The Persian spelling has د, not ز |
+| lock | қулф | قفل | qulf | The letters ف and ل change places |
 
 ### Typing Both Scripts
 

@@ -54,7 +54,7 @@ One word needs care. In Tajik **рост** means "straight" and also "right". In
 | Go to the end of the street | То охири кӯча равед | تا آخر کوچه روید | To okhiri kūcha raved |  |
 | Go a little further | Каме пештар равед | کمی پیشتر روید | Kame peshtar raved | Iran: کمی جلوتر بروید (kami jelotar beravid) |
 | Go up | Боло равед | بالا روید | Bolo raved |  |
-| Go down | Поён равед | پایین روید | Poyon raved | Persian spelling: پایین. Iran says pāyin |
+| Go down | Поён равед | پایان روید | Poyon raved | Tajik поён is پایان in Persian script. Iran: پایین (pāyin) |
 | Stop here | Ҳамин ҷо истед | همین جا ایستید | Hamin jo isted |  |
 | You will see it | Мебинед | می بینید | Mebined |  |
 | You have gone past it | Гузашта рафтед | گذشته رفتید | Guzashta rafted | Iran: رد کردید (rad kardid) |
