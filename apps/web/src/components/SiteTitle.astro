@@ -1,0 +1,8 @@
+---
+import Mark from '../assets/logo-mark.svg';
+const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
+---
+<a href={siteTitleHref} class="site-title sl-flex">
+  <Mark class="site-mark" width="28" height="28" aria-hidden="true" />
+  <span translate="no">{siteTitle}</span>
+</a>

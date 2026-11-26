@@ -6,6 +6,19 @@ A mobile book reader built with Astro and Starlight. Course manifests and Markdo
 
 The reader supports books that derive ideas from first principles, show worked solutions, and ask readers to predict, reason, test, and validate. Generating code is becoming easier; understanding its assumptions and gathering evidence for its behavior remain essential. Keep code, equations, and definitions visible. Review answers retain their disclosure controls so readers can commit to their reasoning before comparing it with the explanation. Reading progress records position, not mastery. See [How to read these books](../../content/references/how-to-read.md).
 
+## Shared appearance
+
+The reader follows the [urmzd.com](https://urmzd.com/) appearance, the same as [the project documentation](https://docs.urmzd.com/). Change a value there first, then copy it here.
+
+| Part | Source in urmzd.com | Here |
+| --- | --- | --- |
+| Palette: neutral surfaces, green accent, gold highlight | `src/styles/global.css` | `src/styles/custom.css` |
+| Instrument Sans and IBM Plex Mono | `docs-site/public/brand/` | `public/fonts/`, `src/styles/fonts.css` |
+| Logo mark and favicon | `docs-site/public/brand/` | `src/assets/logo-mark.svg`, `public/favicon.svg` |
+| Header controls and Lucide icons | `docs-site/public/` | `src/components/SocialIcons.astro`, `src/components/ThemeSelect.astro` |
+
+The theme starts with the system setting. The header button saves a light or dark choice on the device. `public/icon.svg` is the install icon; it keeps the book and uses the same palette. See the [asset credits and licenses](public/brand/CREDITS.txt).
+
 ## Develop
 
 Use Node.js 24, pnpm 11.6, and Python 3.11 or later.

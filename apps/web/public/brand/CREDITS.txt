@@ -1,0 +1,18 @@
+Openlearn shares its appearance with urmzd.com: the logo mark, typefaces, icons and palette.
+
+Logo mark and favicon: Urmzd Mukhammadnaim, copyright 2026.
+Original SVG files from urmzd/urmzd.com, revision bd622bfc1d349aa1bedaf2fa0984135c89c008db.
+Source: https://github.com/urmzd/urmzd.com/tree/bd622bfc1d349aa1bedaf2fa0984135c89c008db/docs-site/public/brand
+Distributed without modification under CC BY-NC-ND 4.0.
+License: https://creativecommons.org/licenses/by-nc-nd/4.0/
+
+Instrument Sans: The Instrument Sans Project Authors, distributed under the SIL Open Font License.
+Latin variable (wght, wdth) WOFF2 files from @fontsource-variable/instrument-sans 5.3.0.
+See /fonts/OFL-Instrument-Sans.txt for the full license.
+
+IBM Plex Mono: IBM Corp., distributed under the SIL Open Font License.
+Latin WOFF2 files from @fontsource/ibm-plex-mono 5.3.0.
+See /fonts/OFL-IBM-Plex-Mono.txt for the full license.
+
+The GitHub, sun and moon icons in the header are from lucide-react 0.562.0.
+See Lucide-LICENSE.txt for the ISC and MIT notices.
