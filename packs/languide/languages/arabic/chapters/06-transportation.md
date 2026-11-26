@@ -148,7 +148,7 @@ When you address a woman, من فضلك is min faḍliki and لو سمحت is la
 | luggage | الأمتعة | al-amtiʿa | Levantine: الشنط (ish-shunaṭ) |
 | hand luggage | حقيبة يد | ḥaqībat yad | Levantine: شنطة إيد (shanṭit īd) |
 | delayed | متأخرة | mutaʾakhkhira | The feminine form, for رحلة |
-| cancelled | ملغاة | mulghā | The feminine form. The final ة is not pronounced after ā in careful speech |
+| cancelled | ملغاة | mulghāh | The feminine form, for رحلة. After ā, the ة is a light h |
 
 ### Phrases
 

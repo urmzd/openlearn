@@ -121,7 +121,7 @@ In a traditional market, people expect you to bargain. In a shopping centre and 
 | by card | بالبطاقة | bil-biṭāqa | Levantine: بالبطاقة (bil-biṭāʾa) |
 | money | مال | māl | Formal: نقود (nuqūd). Levantine: مصاري (maṣārī) |
 | the change | الباقي | al-bāqī | Levantine: الباقي (il-bāʾī) |
-| I don't have small notes | ليس عندي عملات صغيرة | laysa ʿindī ʿumlāt ṣaghīra | Levantine: ما معي فراطة (mā maʿī frāṭa) |
+| I only have a large banknote | معي ورقة نقدية كبيرة فقط | maʿī waraqa naqdiyya kabīra faqaṭ | Levantine: ما معي فراطة (mā maʿī frāṭa) "I have no small change" |
 | A receipt, please | إيصال من فضلك | īṣāl min faḍlika | Levantine: وصل لو سمحت (waṣl law samaḥt) |
 | An invoice in the company's name | فاتورة باسم الشركة | fātūra bi-ism ash-sharika | For work expenses |
 | A bag, please | كيس من فضلك | kīs min faḍlika | Same in Levantine |
@@ -180,7 +180,7 @@ In a traditional market, people expect you to bargain. In a shopping centre and 
 | a piece | قطعة | qiṭʿa | Levantine: قطعة (ʾiṭʿa) |
 | a box, a packet | علبة | ʿulba | Levantine: علبة (ʿilbe) |
 | a bottle | زجاجة | zujāja | Levantine: قنينة (ʾannīne) |
-| a dozen | دزينة | dazzīna | Eggs are also sold by the tray |
+| a bag of rice | كيس أرز | kīs aruzz | Levantine: كيس رز (kīs ruzz) |
 | apples | تفاح | tuffāḥ | Same in Levantine |
 | bananas | موز | mawz | Levantine: موز (mōz) |
 | oranges | برتقال | burtuqāl | Levantine: برتقان (burtʾān) |

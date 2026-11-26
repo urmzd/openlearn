@@ -107,7 +107,7 @@ When you address a woman, من فضلك is min faḍliki and لو سمحت is la
 | Is this halal? | هل هذا حلال؟ | hal hādhā ḥalāl? | Levantine: هاد حلال؟ (hād ḥalāl?) |
 | Is there meat in this? | هل يوجد لحم في هذا؟ | hal yūjad laḥm fī hādhā? | Levantine: في لحمة بهاد؟ (fī laḥme bi-hād?) |
 | I am allergic to nuts | عندي حساسية من المكسرات | ʿindī ḥasāsiyya min al-mukassarāt | Same in Levantine |
-| I am allergic to peanuts | عندي حساسية من الفول السوداني | ʿindī ḥasāsiyya min al-fūl as-sūdānī | Levantine: فستق عبيد (fustuʾ ʿabīd) |
+| I am allergic to peanuts | عندي حساسية من الفول السوداني | ʿindī ḥasāsiyya min al-fūl as-sūdānī | Levantine: فستق (fustuʾ) |
 | I am allergic to milk | عندي حساسية من الحليب | ʿindī ḥasāsiyya min al-ḥalīb | Same in Levantine |
 | I am allergic to wheat | عندي حساسية من القمح | ʿindī ḥasāsiyya min al-qamḥ | Levantine: قمح (ʾamḥ) |
 | I am allergic to eggs | عندي حساسية من البيض | ʿindī ḥasāsiyya min al-bayḍ | Levantine: بيض (bēḍ) |

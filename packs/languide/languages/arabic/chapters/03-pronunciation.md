@@ -22,7 +22,7 @@ Arabic spelling is regular. Each letter has one sound, and each sound has one le
 | th | ث | As in "think" |
 | dh | ذ | As in "this" |
 | sh | ش | As in "ship" |
-| ē, ō | No letter | Long e and long o. Levantine forms only |
+| ē, ō | No letter | Long e and long o. Levantine forms and foreign words only |
 
 ### Rules of the Transliteration
 
@@ -77,11 +77,11 @@ The letter **ا** (alif) is the first letter of the alphabet. It is not a conson
 
 ### Sounds That Are the Same as English
 
-These 15 consonants need no special practice: b, t, th, j, d, dh, z, s, sh, f, k, l, m, n, w, y. Three details are important.
+These 16 consonants need no special practice: b, t, th, j, d, dh, z, s, sh, f, k, l, m, n, w, y. Three details are important.
 
 - **t** and **d**: the tongue touches the back of the top teeth, not the ridge behind them.
 - **l**: it is always light, as in "leaf". It is never the dark l of "full". The only exception is the word الله (allāh).
-- **h**: pronounce it at the end of a syllable too: مَهْم is not a word, but قَهْوَة (qahwa) "coffee" has a clear h before the w.
+- **h**: pronounce it at the end of a syllable too. The word قَهْوَة (qahwa) "coffee" has a clear h before the w.
 
 ### The Rolled r
 
@@ -299,7 +299,7 @@ Some formal words keep the q in Levantine too, for example القرآن (al-qur�
 | q sounds like k | Move the tongue back. قَلْب (qalb) is not كَلْب (kalb) |
 | The English r | Tap the tongue once |
 | A doubled consonant is too short | Hold it. حَمَّام (ḥammām) is not حَمَام (ḥamām) |
-| The h is silent at the end of a syllable | Pronounce it: قَهْوَة (qahwa), مَهْم is wrong, مُهِمّ (muhimm) "important" |
+| The h is silent at the end of a syllable | Pronounce it: قَهْوَة (qahwa) "coffee", فَهْم (fahm) "understanding" |
 | The l is pronounced before a sun letter | Say ash-shams, not al-shams |
 | An unstressed vowel becomes the weak English vowel of "about" | Give each a, i, u its full sound |
 

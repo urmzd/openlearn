@@ -56,7 +56,7 @@ When you address a woman, من فضلك is min faḍliki and لو سمحت is la
 | key | مفتاح | miftāḥ | Plural: مفاتيح (mafātīḥ) |
 | room card | بطاقة الغرفة | biṭāqat al-ghurfa | Levantine: كرت الغرفة (kart il-ghurfe) |
 | bed | سرير | sarīr | Levantine: تخت (takht) |
-| double bed | سرير مزدوج | sarīr muzdawij | Levantine: تخت مزدوج (takht mujwiz) |
+| double bed | سرير مزدوج | sarīr muzdawij | Levantine: تخت مجوز (takht mujwiz) |
 | bathroom | حمام | ḥammām | Same in Levantine |
 | shower | دش | dushsh | All varieties |
 | air conditioner | مكيف | mukayyif | Same in Levantine |

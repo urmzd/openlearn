@@ -86,7 +86,7 @@ A study session of 30 minutes can follow this routine.
 | Weeks | Chapters | Goal |
 |-------|----------|------|
 | 1 to 2 | Chapter 3 and Chapter 4 | Pronounce every sound. Read and write the 28 letters |
-| 3 to 4 | Chapter 1 | Greet people, ask for help, use the 12 core patterns |
+| 3 to 4 | Chapter 1 | Greet people, ask for help, use the core patterns |
 | 5 to 6 | Chapter 2 | Build simple sentences. Count. Ask questions |
 | 7 to 10 | Chapters 5 to 9 | One scenario chapter each week |
 | 11 | Chapter 10 | Choose the correct register and the correct fixed reply |
@@ -174,7 +174,7 @@ The transliteration shows careful pronunciation. Chapter 3 explains every sound.
 | ṣ, ḍ, ṭ, ẓ | ص, ض, ط, ظ | Heavy s, d, t, and dh |
 | th, dh | ث, ذ | As in "think" and "this" |
 | sh | ش | As in "ship" |
-| ē, ō | none | Long e and o. Levantine forms only |
+| ē, ō | none | Long e and o. Levantine forms and foreign words only |
 
 Arabic script in this guide has no vowel marks, because real Arabic text has none. Chapters 3 and 4 are the exceptions. They show the vowel marks so that you can learn them.
 

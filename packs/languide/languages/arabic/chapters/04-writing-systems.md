@@ -22,7 +22,38 @@ Arabic has one script for every country and every dialect. You can learn to read
 
 Read the columns as follows. **Isolated** is the letter alone. **Initial** is the form at the start of a word, or after a letter that does not connect. **Medial** is the form between two connected letters. **Final** is the form at the end of a word, connected to the letter before it.
 
-@@LETTER_TABLE@@
+| Number | Name | Sound | Isolated | Initial | Medial | Final |
+|--------|------|-------|----------|---------|--------|-------|
+| 1 | alif | ā, or a seat for hamza | ا | ﺍ | ﺎ | ﺎ |
+| 2 | bāʾ | b | ب | ﺑ | ﺒ | ﺐ |
+| 3 | tāʾ | t | ت | ﺗ | ﺘ | ﺖ |
+| 4 | thāʾ | th | ث | ﺛ | ﺜ | ﺚ |
+| 5 | jīm | j | ج | ﺟ | ﺠ | ﺞ |
+| 6 | ḥāʾ | ḥ | ح | ﺣ | ﺤ | ﺢ |
+| 7 | khāʾ | kh | خ | ﺧ | ﺨ | ﺦ |
+| 8 | dāl | d | د | ﺩ | ﺪ | ﺪ |
+| 9 | dhāl | dh | ذ | ﺫ | ﺬ | ﺬ |
+| 10 | rāʾ | r | ر | ﺭ | ﺮ | ﺮ |
+| 11 | zāy | z | ز | ﺯ | ﺰ | ﺰ |
+| 12 | sīn | s | س | ﺳ | ﺴ | ﺲ |
+| 13 | shīn | sh | ش | ﺷ | ﺸ | ﺶ |
+| 14 | ṣād | ṣ | ص | ﺻ | ﺼ | ﺺ |
+| 15 | ḍād | ḍ | ض | ﺿ | ﻀ | ﺾ |
+| 16 | ṭāʾ | ṭ | ط | ﻃ | ﻄ | ﻂ |
+| 17 | ẓāʾ | ẓ | ظ | ﻇ | ﻈ | ﻆ |
+| 18 | ʿayn | ʿ | ع | ﻋ | ﻌ | ﻊ |
+| 19 | ghayn | gh | غ | ﻏ | ﻐ | ﻎ |
+| 20 | fāʾ | f | ف | ﻓ | ﻔ | ﻒ |
+| 21 | qāf | q | ق | ﻗ | ﻘ | ﻖ |
+| 22 | kāf | k | ك | ﻛ | ﻜ | ﻚ |
+| 23 | lām | l | ل | ﻟ | ﻠ | ﻞ |
+| 24 | mīm | m | م | ﻣ | ﻤ | ﻢ |
+| 25 | nūn | n | ن | ﻧ | ﻨ | ﻦ |
+| 26 | hāʾ | h | ه | ﻫ | ﻬ | ﻪ |
+| 27 | wāw | w, or ū | و | ﻭ | ﻮ | ﻮ |
+| 28 | yāʾ | y, or ī | ي | ﻳ | ﻴ | ﻲ |
+
+The six letters ا د ذ ر ز و have only two shapes, because they never connect to the next letter. For these letters, the Initial column shows the isolated shape and the Medial column shows the final shape.
 
 Most letters keep one basic shape. The initial and medial forms lose the tail. The dots do not change.
 
@@ -105,8 +136,8 @@ The vowel marks are small signs above or below a letter. Their Arabic name is **
 | بْ | sukūn | No vowel | مَكْتَب | maktab | office |
 | بّ | shadda | Doubled consonant | سُكَّر | sukkar | sugar |
 | بًا | tanwīn fatḥ | -an | شُكْرًا | shukran | thank you |
-| بٍ | tanwīn kasr | -in | A formal case ending | No pausal form | Not pronounced in careful speech |
-| بٌ | tanwīn ḍamm | -un | A formal case ending | No pausal form | Not pronounced in careful speech |
+| بٍ | tanwīn kasr | -in | كِتَابٍ | kitābin | "of a book" in a full formal reading. Careful speech says kitāb |
+| بٌ | tanwīn ḍamm | -un | كِتَابٌ | kitābun | "a book" in a full formal reading. Careful speech says kitāb |
 
 - **Fatḥa** and **ḍamma** are above the letter. **Kasra** is below it.
 - **Sukūn** is a small circle. It shows that the consonant has no vowel.
