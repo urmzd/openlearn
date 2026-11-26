@@ -1,0 +1,12 @@
+# stage	title	files (comma-separated, pack-relative, read in order)	done when	check
+1	Core phrases	languages/russian/chapters/00-cover.md,languages/russian/chapters/01-core-phrases.md	Without looking, you can greet, thank, apologize, and ask someone to repeat or slow down, at the polite tier.	-
+2	Language foundations	languages/russian/chapters/02-language-foundations.md	You can build a new sentence from a pattern template, put the slot word in the case the pattern asks for, and say whether you used ты or вы.	-
+3	Pronunciation	languages/russian/chapters/03-pronunciation.md	You can read a new phrase aloud with the stress in the right place and reduce the unstressed о.	-
+4	Writing system	languages/russian/chapters/04-writing-systems.md	You can read all 33 letters in print, sort out the six that look like Latin letters but sound different, and read ten survival words on a sign.	-
+5	Directions and navigation	languages/russian/chapters/05-directions-navigation.md	You can ask where something is, follow the answer, and confirm you understood it, in writing, from memory.	-
+6	Transportation	languages/russian/chapters/06-transportation.md	You can buy a ticket, ask which platform or stop, and tell a driver where to go and where to stop.	-
+7	Restaurants	languages/russian/chapters/07-restaurants.md	You can get a table, order with a substitution or an allergy, and ask for the bill, start to finish.	-
+8	Shopping	languages/russian/chapters/08-shopping.md	You can ask for a size or a color, ask the price, and decline politely.	-
+9	Hotels	languages/russian/chapters/09-hotels.md	You can check in, report a problem with the room, and check out.	-
+10	Cultural guide	languages/russian/chapters/10-cultural-guide.md	For three situations in the chapter you can say what to do, what not to do, and the phrase that goes with it.	-
+11	Work and business	languages/russian/chapters/11-work-and-business.md	You can introduce yourself and your role, ask a clarifying question in a meeting, and write a three-line email with the correct opening and closing.	-

@@ -9,7 +9,7 @@ set -euo pipefail
 # Options:
 #   --languages-dir DIR   Directory containing language folders (default: languages)
 #   --output-dir DIR      Output directory for PDFs (default: outputs)
-#   --skip-font-check     Skip CJK font detection
+#   --skip-font-check     Skip font detection
 #   --continue-on-error   Keep going if a language fails
 #   --manifest FILE       Write build manifest JSON to FILE
 #   --discover            List available languages and exit
@@ -32,10 +32,16 @@ MANIFEST=""
 DISCOVER=false
 LANGUAGES=()
 
-# CJK languages that need special font handling
-CJK_LANGUAGES="japanese chinese korean"
+RTL_FILTER="$ROOT_DIR/scripts/rtl.lua"
+TABLE_FILTER="$ROOT_DIR/scripts/tables.lua"
 
-# Font candidates (tried in order) — used via nameref in find_font()
+# Languages by script. Each group needs its own font handling.
+CJK_LANGUAGES="japanese chinese mandarin korean"
+CHINESE_LANGUAGES="chinese mandarin"
+RTL_LANGUAGES="arabic persian farsi tajik"
+CYRILLIC_LANGUAGES="russian tajik"
+
+# Font candidates (tried in order), used via nameref in find_font()
 # shellcheck disable=SC2034
 CJK_FONT_CANDIDATES=(
   "Noto Sans CJK JP"
@@ -47,6 +53,31 @@ CJK_FONT_CANDIDATES=(
   "IPAMincho"
 )
 
+# Simplified Chinese needs its own glyph shapes, not the Japanese ones.
+# shellcheck disable=SC2034
+CHINESE_FONT_CANDIDATES=(
+  "Noto Sans CJK SC"
+  "Noto Serif CJK SC"
+  "Source Han Sans SC"
+  "PingFang SC"
+  "Songti SC"
+  "Heiti SC"
+  "WenQuanYi Micro Hei"
+)
+
+# Arabic-script fonts that also carry the Persian letters.
+# shellcheck disable=SC2034
+RTL_FONT_CANDIDATES=(
+  "Noto Naskh Arabic"
+  "Amiri"
+  "Scheherazade New"
+  "Geeza Pro"
+  "Al Bayan"
+  "DejaVu Sans"
+)
+
+# DejaVu covers Cyrillic (with the Tajik letters), pinyin tone marks and
+# the dotted letters used in Arabic transliteration, so it comes first.
 # shellcheck disable=SC2034
 LATIN_SERIF_CANDIDATES=("DejaVu Serif" "Liberation Serif" "Palatino Linotype" "Palatino")
 # shellcheck disable=SC2034
@@ -77,21 +108,32 @@ find_font() {
   return 1
 }
 
-is_cjk() {
-  local lang="$1"
-  for cjk in $CJK_LANGUAGES; do
-    [[ "$lang" == "$cjk" ]] && return 0
+# in_group SLUG "space separated list"
+in_group() {
+  local lang="$1" item
+  for item in $2; do
+    [[ "$lang" == "$item" ]] && return 0
   done
   return 1
 }
 
+is_cjk() { in_group "$1" "$CJK_LANGUAGES"; }
+
+# Title on the PDF cover and in the page header.
+guide_title() {
+  case "$1" in
+    tajik) echo "Tajik and Persian Communication Guide" ;;
+    mandarin) echo "Mandarin Chinese Communication Guide" ;;
+    *) echo "${1^} Communication Guide" ;;
+  esac
+}
+
+# Succeeds when a font for the language's CJK script is installed.
 check_cjk_fonts() {
-  if [[ "$(uname)" == "Darwin" ]]; then
-    system_profiler SPFontsDataType 2>/dev/null | grep -qi 'hiragino\|noto sans cjk\|noto serif cjk\|source han\|ipa'
-  elif command -v fc-list >/dev/null 2>&1; then
-    fc-list :lang=ja 2>/dev/null | grep -q .
+  if in_group "$1" "$CHINESE_LANGUAGES"; then
+    find_font CHINESE_FONT_CANDIDATES >/dev/null
   else
-    return 1
+    find_font CJK_FONT_CANDIDATES >/dev/null
   fi
 }
 
@@ -122,7 +164,7 @@ build_language() {
   # CJK font check
   if ! $SKIP_FONT_CHECK && is_cjk "$slug"; then
     info "Checking CJK fonts for $slug..."
-    check_cjk_fonts || die "No CJK fonts found. Install fonts-noto-cjk or use --skip-font-check."
+    check_cjk_fonts "$slug" || die "No CJK fonts found. Install fonts-noto-cjk or use --skip-font-check."
   fi
 
   # Collect and sort chapter files
@@ -145,7 +187,7 @@ build_language() {
     --from=markdown
     --pdf-engine xelatex
     --toc --toc-depth=3 --number-sections
-    -V "title=${slug^} Tourist Guide"
+    -V "title=$(guide_title "$slug")"
     -V documentclass=article
     -V geometry:margin=0.75in
     -V colorlinks=true
@@ -156,16 +198,39 @@ build_language() {
   # Add template if it exists
   [[ -f "$TEMPLATE" ]] && cmd+=(--template "$TEMPLATE")
 
+  # Size table columns from their content. This must run before the
+  # right-to-left filter, which replaces text with raw LaTeX.
+  cmd+=(--lua-filter "$TABLE_FILTER")
+
   # CJK support
   if is_cjk "$slug"; then
     cmd+=(-V usecjk=true)
     local cjk_font=""
-    for _f in "${CJK_FONT_CANDIDATES[@]}"; do
-      if [[ "$(fc-list --format '%{family}\n' 2>/dev/null | grep -ciF "$_f")" -gt 0 ]]; then
-        cjk_font="$_f"; break
-      fi
-    done
+    if in_group "$slug" "$CHINESE_LANGUAGES"; then
+      cjk_font="$(find_font CHINESE_FONT_CANDIDATES)" || cjk_font=""
+    else
+      cjk_font="$(find_font CJK_FONT_CANDIDATES)" || cjk_font=""
+    fi
     [[ -n "$cjk_font" ]] && cmd+=(-V "CJKmainfont=$cjk_font")
+  fi
+
+  # Right-to-left script support (Arabic, Persian)
+  if in_group "$slug" "$RTL_LANGUAGES"; then
+    local rtl_font=""
+    rtl_font="$(find_font RTL_FONT_CANDIDATES)" || rtl_font=""
+    if [[ -z "$rtl_font" ]]; then
+      $SKIP_FONT_CHECK || die "No Arabic-script font found. Install fonts-noto-core (Noto Naskh Arabic) or use --skip-font-check."
+      rtl_font="Noto Naskh Arabic"
+    fi
+    cmd+=(-V "rtlfont=$rtl_font" --lua-filter "$RTL_FILTER")
+  fi
+
+  # Cyrillic needs a text font that covers it
+  if in_group "$slug" "$CYRILLIC_LANGUAGES" && ! $SKIP_FONT_CHECK; then
+    local cyrillic_fonts
+    cyrillic_fonts="$(fc-list :lang=ru --format '%{family}\n' 2>/dev/null || true)"
+    grep -qiE 'dejavu|liberation|palatino' <<<"$cyrillic_fonts" \
+      || die "No Cyrillic text font found. Install fonts-dejavu or use --skip-font-check."
   fi
 
   # Latin fonts

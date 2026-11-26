@@ -10,7 +10,12 @@
     { "file": "README.md", "title": "Overview" }
   ],
   "tracks": [
+    { "dir": "languages/arabic/chapters", "title": "Arabic" },
+    { "dir": "languages/french/chapters", "title": "French" },
     { "dir": "languages/japanese/chapters", "title": "Japanese" },
-    { "dir": "languages/spanish/chapters", "title": "Spanish" }
+    { "dir": "languages/mandarin/chapters", "title": "Mandarin" },
+    { "dir": "languages/russian/chapters", "title": "Russian" },
+    { "dir": "languages/spanish/chapters", "title": "Spanish" },
+    { "dir": "languages/tajik/chapters", "title": "Tajik and Persian" }
   ]
 }

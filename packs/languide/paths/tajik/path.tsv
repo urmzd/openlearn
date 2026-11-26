@@ -1,0 +1,14 @@
+# stage	title	files (comma-separated, pack-relative, read in order)	done when	check
+1	Tajik Cyrillic	languages/tajik/chapters/00-cover.md,languages/tajik/chapters/04-writing-systems.md	You can read any Tajik word aloud from Cyrillic, including ғ, ӣ, қ, ӯ, ҳ and ҷ, and write a sentence you hear in Cyrillic with the right spelling of the izofat and of -ро. This stage is Part A of the chapter.	-
+2	Core phrases in Cyrillic	languages/tajik/chapters/01-core-phrases.md	You can read the Tajik column of the chapter aloud at speaking speed without the transliteration, and write ten of its phrases in Cyrillic from memory.	-
+3	Persian script	languages/tajik/chapters/04-writing-systems.md	You can name all 32 letters in each of their shapes, say which letters do not join, and read a short unvowelled word by supplying its vowels. This stage is Part B of the chapter.	-
+4	Moving between the scripts	languages/tajik/chapters/04-writing-systems.md,languages/tajik/chapters/01-core-phrases.md	You can rewrite ten core phrases from Cyrillic into Persian script and back, and explain each spelling that the sound alone does not give you. This stage is Part C of the chapter.	-
+5	Sounds and spelling	languages/tajik/chapters/03-pronunciation.md	You can say how each Tajik vowel is written in both scripts and how an Iranian speaker pronounces the same word.	-
+6	Language foundations	languages/tajik/chapters/02-language-foundations.md	You can name the izofat, the object marker and the two verb stems in a sentence, and turn five spoken Tajik sentences into written Tajik.	-
+7	Directions and navigation	languages/tajik/chapters/05-directions-navigation.md	You can read the chapter's phrases aloud from the Persian-script column alone, and ask for and confirm directions in writing in either script.	-
+8	Transportation	languages/tajik/chapters/06-transportation.md	You can read a ticket or a timetable word in either script, and say which transport words change in Iran.	-
+9	Restaurants	languages/tajik/chapters/07-restaurants.md	You can read a menu line in either script and order, with a substitution, in writing.	-
+10	Shopping	languages/tajik/chapters/08-shopping.md	You can read prices and sizes in Persian digits and ask the price and decline politely in writing.	-
+11	Hotels	languages/tajik/chapters/09-hotels.md	You can fill in a check-in form in Cyrillic and report a problem with the room in writing.	-
+12	Tajik, Iranian Persian and Dari	languages/tajik/chapters/10-cultural-guide.md	For twenty everyday words you can give the Tajik and the Iranian form, and you can restate a Tajik sentence so that an Iranian speaker follows it.	-
+13	Work and business	languages/tajik/chapters/11-work-and-business.md	You can introduce yourself and your role in the formal register, and write a three-line email in Cyrillic and in Persian script with the correct opening and closing.	-

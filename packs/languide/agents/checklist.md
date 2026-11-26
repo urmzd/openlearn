@@ -21,6 +21,7 @@
 - [ ] **Transportation:** Tickets, platforms, taxis, buses (50+ phrases)
 - [ ] **Directions:** Asking for directions, landmarks, getting unlost (30+ phrases)
 - [ ] **Emergencies:** Medical, police, lost items, urgent help (30+ phrases)
+- [ ] **Work and business:** Introductions and roles, meetings, email and chat, calls, office vocabulary (70+ phrases)
 
 ## Pattern Phrases Required
 - [ ] **Request patterns:** [thing] please, Please [action], Could you [action]?
@@ -34,6 +35,7 @@
 - [ ] **Scannable format:** Brief explanations, dense phrase tables
 - [ ] **Markdown valid:** Tables render correctly, headings properly nested
 - [ ] **No placeholders/TBDs:** All sections complete
+- [ ] **Practice section:** Every chapter after the cover ends with a ten-row `Prompt | Answer` table
 
 ## Cultural Context (Where It Affects Communication)
 - [ ] **Etiquette notes:** Include where they affect phrase choice
