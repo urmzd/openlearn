@@ -9,6 +9,8 @@
 // Everything here enhances server-rendered pages: without JavaScript each
 // section is still its own page with previous and next links.
 
+import { startExercises } from './exercises.mjs';
+
 const clamp = (n) => Math.min(1, Math.max(0, n));
 function el(tag, className, text) {
 	const node = document.createElement(tag);
@@ -29,6 +31,7 @@ async function diagrams(root) {
 
 export function enhance(root) {
 	diagrams(root);
+	startExercises(root);
 }
 
 // ---------- continuous reading ----------

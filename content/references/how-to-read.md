@@ -20,6 +20,8 @@ Use the same method without code: derive an equation, check a small numerical ca
 
 A book is a sequence of numbered chapters, and each chapter is a sequence of sections: 5.3 is the third section of Chapter 5. A chapter opens with what it covers and what it assumes. Each section opens with a short introduction and its **Learning objectives**, works an example by hand, walks through the solution step by step, and ends with **Key terms**, a **Summary**, and **Review questions**. Answers to review questions are hidden until you reveal them, so try each one first.
 
+Work each question with paper and a pen: write the steps, draw the picture, compute the small case. On the website, **Copy check prompt** then copies the question and the book's answer as a prompt for an AI assistant. Add your answer, or a photo of your page, and send it. The assistant checks your reasoning against the book and asks one follow-up question. Open the answer afterwards to compare.
+
 On the website a chapter reads as one long page: keep scrolling and the next section follows. A section counts as read when you reach its end. This records your reading position, not your understanding.
 
 ## Code, math, and call-outs

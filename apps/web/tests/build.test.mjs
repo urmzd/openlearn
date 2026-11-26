@@ -92,7 +92,7 @@ test('the library separates six books from guides and retains old home routes', 
   }
   for (const id of ['ai-engineering', 'systems', 'software-engineering', 'programming-and-algorithms', 'mathematics']) {
     const book = library.courses.find((c) => c.id === id);
-    assert.equal(book.pdf, undefined, 'pre-merge PDFs must not represent a consolidated book');
+    assert.match(book.pdf, new RegExp(`/openlearn-${id}\\.pdf$`), 'a consolidated book links the PDF published under its own ID');
   }
   const ai = library.courses.find((c) => c.id === 'ai-engineering');
   assert.ok(ai.lessons.some((l) => l.url === '/ml/08-tinyllm/02-tokenizers/'));

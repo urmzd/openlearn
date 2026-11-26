@@ -117,4 +117,4 @@ Programming and Algorithms combines language primers, type systems, algorithms, 
 
 The root `course_aliases` maps retired publication IDs to their new book for CLI selection. The generator uses `source-migrations.json` through `legacy-source-paths.mjs` to retain chapter URLs, image URLs, and device reading-progress keys. Retired book home pages and `/learn/<old-id>/` redirect to the consolidated home. Competitive Programming retains its former home URL as the competitive-programming chapter. Each canonical chapter appears once, and new exports use the consolidated ID.
 
-The verified PDF snapshot omits pre-merge editions of combined books. Refresh `apps/web/release-assets.json` after publishing matching PDFs to restore their download links. Source packs and independent website builds already use the new manifests.
+The verified PDF snapshot lists one PDF for each book, published under the consolidated ID. Refresh `apps/web/release-assets.json` after each release so the download links point at the current edition. Source packs and independent website builds already use the new manifests.

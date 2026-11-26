@@ -18,13 +18,13 @@ Open a book for its introduction, Start or Continue reading link, and numbered c
 
 A chapter reads as one page. When you near the end of a section, the next section of the same chapter loads below it. The address bar, title, and menu follow the section on screen. A chapter ends with a link to the next chapter. A thin line at the top shows reading progress; reaching a section's end marks it read.
 
-Before revealing a review answer, commit to your prediction and explain why it follows. Use the worked solution to check your reasoning, then identify a test, counterexample, or changed assumption that could challenge it. Compare the evidence with the requirement, including what remains untested.
+Work each review question on paper before you open its answer. **Copy check prompt** copies the question and the book's answer as a prompt: add your answer and send it to an AI assistant to confirm your reasoning. Before revealing a review answer, commit to your prediction and explain why it follows. Use the worked solution to check your reasoning, then identify a test, counterexample, or changed assumption that could challenge it. Compare the evidence with the requirement, including what remains untested.
 
 Without JavaScript, each section remains available as its own page with previous and next links. Wide code listings, tables, and display equations scroll within the reading column on small screens.
 
 ## PDFs and device storage
 
-A PDF link appears on the shelf and book opening when `apps/web/release-assets.json` contains a matching published asset. Links point to a specific release rather than assuming a file exists in the latest release. Refresh the snapshot after publishing PDFs using the command in the [reader README](../../apps/web/README.md). Download a PDF to read offline; source packs remain available from [releases](https://github.com/urmzd/openlearn/releases/latest).
+A PDF link appears on the shelf, on the book opening and in the book menu above each section when `apps/web/release-assets.json` contains a matching published asset. Links point to a specific release rather than assuming a file exists in the latest release. Refresh the snapshot after publishing PDFs using the command in the [reader README](../../apps/web/README.md). Download a PDF to read offline; source packs remain available from [releases](https://github.com/urmzd/openlearn/releases/latest).
 
 Reading position and completion markers stay in browser storage, with no account or synchronization server. Clearing site data removes them. The current reader has no offline-course download, note editor, or progress import/export controls. Existing stored records are retained when progress is updated.
 
