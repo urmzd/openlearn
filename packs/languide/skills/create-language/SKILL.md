@@ -1,11 +1,11 @@
 ---
 name: create-language
-description: "Generate a complete communication-focused language guide for travelers. Creates all 11 chapter files following the project's system prompt and checklist."
+description: "Generate a complete communication-focused language guide for casual and professional use. Creates all 12 chapter files following the project's system prompt and checklist."
 ---
 
 # Create Language Guide
 
-You are generating a **communication-focused language guide** for travelers. Follow the system prompt at `agents/system-prompt.md` exactly, and validate against `agents/checklist.md` before finishing.
+You are generating a **communication-focused language guide** for learners who want casual conversation and enough of the language for work. Follow the system prompt at `agents/system-prompt.md` exactly, and validate against `agents/checklist.md` before finishing.
 
 ## Input
 
@@ -25,7 +25,7 @@ Parse the language slug from the arguments (lowercase, no spaces). If no languag
 3. **Reference an existing guide for format:**
    - Read a few chapters from `languages/japanese/chapters/` (e.g., `00-cover.md`, `01-core-phrases.md`, `07-restaurants.md`) to match the exact format, table style, and depth
 
-4. **Generate all 11 chapters** following the required structure:
+4. **Generate all 12 chapters** following the required structure:
    - `00-cover.md` — About, usage notes, guide structure overview
    - `01-core-phrases.md` — Pattern templates, greetings, small talk, asking for help, emergencies, daily interactions
    - `02-language-foundations.md` — Essential grammar, particles, pronouns, sentence patterns
@@ -37,6 +37,7 @@ Parse the language slug from the arguments (lowercase, no spaces). If no languag
    - `08-shopping.md` — Sizes, trying on, payment, returns
    - `09-hotels.md` — Check-in/out, requests, problems
    - `10-cultural-guide.md` — Regional differences, etiquette affecting communication
+   - `11-work-and-business.md` — Introductions and roles, meetings, email and chat, calls, office vocabulary, formal register
 
    Write each file to `languages/<slug>/chapters/`.
 
@@ -47,13 +48,20 @@ Parse the language slug from the arguments (lowercase, no spaces). If no languag
    - **50+ phrases per scenario chapter** (chapters 05-09)
    - **30+ phrases** for directions and emergencies sections
    - **Regional variations** where they affect communication
+   - **70+ phrases** in the work and business chapter
+   - **A `## Practice` section** at the end of every chapter after the cover: a ten-row `Prompt | Answer` table
    - **No tourism tips** — focus on how to communicate, not what to see
 
 6. **Validate against checklist:**
    - Go through every item in `agents/checklist.md` and confirm compliance
    - Report any gaps to the user
 
-7. **Optionally generate a spec:**
+7. **Register the language:**
+   - Add a track to `openlearn.json`
+   - Add `paths/<slug>/path.tsv` and `paths/<slug>/README.md`, modelled on an existing path
+   - If the script is not Latin, add the slug to the matching group at the top of `scripts/build-guide.sh`
+
+8. **Optionally generate a spec:**
    - Ask the user if they'd like a `languages/<slug>/spec.md` created (detailed content specification like the Japanese one)
 
 ## Output

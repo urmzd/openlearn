@@ -1,0 +1,12 @@
+# stage	title	files (comma-separated, pack-relative, read in order)	done when	check
+1	Core phrases	languages/arabic/chapters/00-cover.md,languages/arabic/chapters/01-core-phrases.md	Without looking, you can greet and answer a greeting, thank, apologize, and ask someone to repeat or slow down, in Modern Standard Arabic and in the Levantine form.	-
+2	Language foundations	languages/arabic/chapters/02-language-foundations.md	You can build a new sentence from a pattern template by swapping the bracketed slot, and say which politeness tier you used.	-
+3	Pronunciation	languages/arabic/chapters/03-pronunciation.md	You can read a phrase aloud from its transliteration and produce ع, ح, خ, غ, ق and the four emphatic consonants so that the minimal pairs differ.	-
+4	Writing system	languages/arabic/chapters/04-writing-systems.md	You can name every letter in a vowelled word, say which of its four shapes each one takes, and read the numbers and ten survival words on a sign.	-
+5	Directions and navigation	languages/arabic/chapters/05-directions-navigation.md	You can ask where something is, follow the answer, and confirm you understood it, in writing, from memory.	-
+6	Transportation	languages/arabic/chapters/06-transportation.md	You can buy a ticket, ask which platform or stop, and tell a driver where to go and where to stop.	-
+7	Restaurants	languages/arabic/chapters/07-restaurants.md	You can get a table, order with a substitution or an allergy, and ask for the bill, start to finish.	-
+8	Shopping	languages/arabic/chapters/08-shopping.md	You can ask for a size or a color, ask the price, and decline politely.	-
+9	Hotels	languages/arabic/chapters/09-hotels.md	You can check in, report a problem with the room, and check out.	-
+10	Cultural guide	languages/arabic/chapters/10-cultural-guide.md	For three situations in the chapter you can say what to do, what not to do, and the phrase that goes with it.	-
+11	Work and business	languages/arabic/chapters/11-work-and-business.md	You can introduce yourself and your role, ask a clarifying question in a meeting, and write a three-line email with the correct opening and closing.	-

@@ -36,6 +36,17 @@ $else$
 $endif$
 $endif$
 
+% Right-to-left script support (Arabic, Persian). scripts/rtl.lua wraps
+% right-to-left runs in \RLtext and numbers inside them in \LRnum.
+$if(rtlfont)$
+\TeXXeTstate=1
+\newfontfamily\rtlfont[Script=Arabic,Scale=1.15]{$rtlfont$}
+\DeclareRobustCommand{\RLtext}[1]{\beginR{\rtlfont #1}\endR}
+\DeclareRobustCommand{\LRnum}[1]{\beginL{\normalfont #1}\endL}
+\DeclareRobustCommand{\RLdigits}[1]{\beginL{\rtlfont #1}\endL}
+\newenvironment{RLpara}{\par\begingroup\raggedleft}{\par\endgroup}
+$endif$
+
 % Set main fonts for Latin text (only override if explicitly provided)
 $if(mainfont)$
 \setmainfont{$mainfont$}
@@ -136,6 +147,9 @@ $endif$
   breaklinks=true
 }
 \urlstyle{same}
+$if(rtlfont)$
+\pdfstringdefDisableCommands{\def\RLtext#1{#1}\def\LRnum#1{#1}\def\RLdigits#1{#1}}
+$endif$
 
 % ============================================================================
 % HEADER AND FOOTER STYLING

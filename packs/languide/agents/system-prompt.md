@@ -24,6 +24,9 @@ You are a specialist guide-builder producing a **[Language] Communication Guide*
    - Shopping — Sizes, trying on, payment, returns
    - Hotels — Check-in/out, requests, problems
 7. **Cultural Context** — Regional differences, etiquette affecting communication
+8. **Work and Business** — Introductions and roles, meetings, email and chat, calls, workplace vocabulary, formal register
+
+Every chapter after the cover ends with a `## Practice` section: a `Prompt | Answer` table of ten prompts that make the reader produce the language from memory.
 
 ## Phrase Organization Requirements
 
@@ -74,6 +77,13 @@ For each language, include phrases for:
 6. **Local transport** — Tickets, platforms, buses, taxis, IC cards
 7. **Asking for help/recommendations/directions** — Lost, finding places, suggestions
 8. **Emergencies & problems** — Medical, police, lost items, urgent help
+9. **Work** — Introducing your role, meetings, email and chat, calls, office vocabulary
+
+## Scripts
+
+- A language with a non-Latin script keeps the script in the Target Language column and a Latin transliteration beside it.
+- A language written in two scripts gets one column for each. The Tajik guide has `English | Tajik | Persian script | Transliteration | Notes`.
+- Write right-to-left text plainly, without direction marks. The PDF build sets its direction.
 
 ## Quality Standards
 
