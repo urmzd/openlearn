@@ -187,7 +187,8 @@ h1 { font-size: clamp(2rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -.0
 .reader-section { margin-top: 4rem; padding-top: 2.5rem; border-top: 1px solid var(--book-rule); }
 .reader-title { margin: 0 !important; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; line-height: 1.2; color: var(--book-ink); }
 .reader-section-header { margin-bottom: 1.5rem; }
-.chapter-break { display: grid; gap: .4rem; margin-top: 3rem; padding-block: 1.5rem; border-top: 1px solid var(--book-rule); text-decoration: none; }
+.chapter-break { display: grid; gap: .4rem; margin-top: 3rem; padding-block: 1.5rem; border-top: 1px solid var(--book-rule); color: var(--book-ink); text-decoration: none; }
+.chapter-break:hover strong { text-decoration: underline; }
 .chapter-break span { font-size: .8125rem; color: var(--book-muted); }
 .chapter-break strong { font-size: 1.25rem; font-weight: 600; }
 .reader .pagination-links { display: none; }
