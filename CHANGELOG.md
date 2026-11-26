@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.30.0 (2026-11-26)
+
+### Features
+
+- **web**: follow the urmzd.com appearance (#69) ([1e26535](https://github.com/urmzd/openlearn/commit/1e26535c37490c27b4724c5f1d4901a6f2da3a0a))
+
+### Misc
+
+- **software-engineering**: add Developer Experience chapter (#67) ([75019d3](https://github.com/urmzd/openlearn/commit/75019d3eb398ddd026e35588edc45628b166910e))
+- **showcase**: legible hero and dark-mode card image (#66) ([aa2b492](https://github.com/urmzd/openlearn/commit/aa2b492ff128dc7ee98e2a9c0476182830ea6968))
+- **showcase**: recapture screenshots for the Openlearn library (#65) ([eae4b34](https://github.com/urmzd/openlearn/commit/eae4b34fb49903c4ea55b6adc2a2ad00b524ed31))
+- move docs into the scaffold-docs layout (#63) ([95911d6](https://github.com/urmzd/openlearn/commit/95911d6ed8b9dcca328be93caf0e9fe9e99b8a07))
+- **ai-engineering**: add LoRA, policy-class, and engine drift questions (#64) ([8791ba2](https://github.com/urmzd/openlearn/commit/8791ba27524eeba5b6df125dfe8de6c85c39855c))
+- **deps**: skip npm versions younger than 24h (#62) ([4d6dba0](https://github.com/urmzd/openlearn/commit/4d6dba0c14dba73259c5bb51809d1bdda1611618))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.29.2...v0.30.0)
+
+
 ## 0.29.2 (2026-10-29)
 
 ### Bug Fixes
