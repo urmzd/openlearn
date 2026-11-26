@@ -229,7 +229,7 @@ local function code(el)
   if classify(el.text) == "rtl" then
     local parts = pandoc.List()
     local first = true
-    for word in el.text:gmatch("%S+") do
+    for word in el.text:gmatch("[^ \t\r\n]+") do
       if not first then parts:insert(pandoc.Space()) end
       parts:insert(pandoc.Str(word))
       first = false
@@ -244,7 +244,7 @@ local function code_block(el)
     for line in (el.text .. "\n"):gmatch("(.-)\n") do
       local parts = pandoc.List()
       local first = true
-      for word in line:gmatch("%S+") do
+      for word in line:gmatch("[^ \t\r\n]+") do
         if not first then parts:insert(pandoc.Space()) end
         parts:insert(pandoc.Str(word))
         first = false

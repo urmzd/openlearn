@@ -221,6 +221,10 @@ $endif$
 \newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
 \newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
 
+% Measure column widths over the whole table in one pass. With the default
+% chunk of 20 rows, a wide cell further down overlaps its neighbour.
+\setcounter{LTchunksize}{1000}
+
 % Ensure longtables don't overflow
 \setlength{\LTleft}{0pt}
 \setlength{\LTright}{0pt}

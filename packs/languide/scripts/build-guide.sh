@@ -33,6 +33,7 @@ DISCOVER=false
 LANGUAGES=()
 
 RTL_FILTER="$ROOT_DIR/scripts/rtl.lua"
+TABLE_FILTER="$ROOT_DIR/scripts/tables.lua"
 
 # Languages by script. Each group needs its own font handling.
 CJK_LANGUAGES="japanese chinese mandarin korean"
@@ -196,6 +197,10 @@ build_language() {
 
   # Add template if it exists
   [[ -f "$TEMPLATE" ]] && cmd+=(--template "$TEMPLATE")
+
+  # Size table columns from their content. This must run before the
+  # right-to-left filter, which replaces text with raw LaTeX.
+  cmd+=(--lua-filter "$TABLE_FILTER")
 
   # CJK support
   if is_cjk "$slug"; then
