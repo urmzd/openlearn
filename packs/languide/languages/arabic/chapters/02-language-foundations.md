@@ -526,15 +526,15 @@ The **unit comes before the ten**, joined with و (wa) "and". Hundreds and thous
 
 ### The Basic Agreement Rule
 
-| Number | Rule | Arabic | Transliteration |
-|--------|------|--------|-----------------|
-| 1 | Singular noun, then the number. Same gender | كتاب واحد | kitāb wāḥid (one book) |
-| 1 | Feminine: add ة to the number | ساعة واحدة | sāʿa wāḥida (one hour) |
-| 2 | Use the dual ending. No number word is necessary | كتابان | kitābān (two books) |
-| 3 to 10 | Number, then a plural noun. The number takes the opposite gender | ثلاثة كتب | thalāthat kutub (three books) |
-| 3 to 10 | With a feminine noun, the number loses its ة | ثلاث ساعات | thalāth sāʿāt (three hours) |
-| 11 to 99 | Number, then a singular noun | عشرون ساعة | ʿishrūn sāʿa (twenty hours) |
-| 100, 1000 | Number, then a singular noun | مئة دولار | miʾat dūlār (one hundred dollars) |
+| Number | Rule | Arabic | Transliteration | Meaning |
+|--------|------|--------|-----------------|---------|
+| 1 | Singular noun, then the number. Same gender | كتاب واحد | kitāb wāḥid | one book |
+| 1 | Feminine: add ة to the number | ساعة واحدة | sāʿa wāḥida | one hour |
+| 2 | Use the dual ending. No number word is necessary | كتابان | kitābān | two books |
+| 3 to 10 | Number, then a plural noun. The number takes the opposite gender | ثلاثة كتب | thalāthat kutub | three books |
+| 3 to 10 | With a feminine noun, the number loses its ة | ثلاث ساعات | thalāth sāʿāt | three hours |
+| 11 to 99 | Number, then a singular noun | عشرون ساعة | ʿishrūn sāʿa | twenty hours |
+| 100, 1000 | Number, then a singular noun | مئة دولار | miʾat dūlār | one hundred dollars |
 
 A beginner who uses the masculine number with every noun is understood. Dialects use a simpler system, and Arabic speakers do not expect perfect number grammar from a learner.
 

@@ -205,6 +205,46 @@ When you address a woman, من فضلك is min faḍliki and لو سمحت is la
 
 ---
 
+## Signs and Announcements
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| tickets | تذاكر | tadhākir | The sign of a ticket office |
+| ticket window | شباك التذاكر | shubbāk at-tadhākir | Stations |
+| waiting room | قاعة الانتظار | qāʿat al-intiẓār | Stations and airports |
+| entry | دخول | dukhūl | Doors and gates |
+| exit | خروج | khurūj | Doors and gates |
+| on time | في الموعد | fī al-mawʿid | Departure screens |
+| Attention, please | يرجى الانتباه | yurjā al-intibāh | The start of an announcement |
+| Dear passengers | السادة المسافرون | as-sāda al-musāfirūn | The start of an announcement |
+| The train to [place] arrives at platform [number] | القطار المتجه إلى [مكان] يصل إلى الرصيف رقم [رقم] | al-qiṭār al-muttajih ilā [makān] yaṣil ilā ar-raṣīf raqm [raqm] | Station announcement |
+| Flight number [number] to [place] | الرحلة رقم [رقم] المتجهة إلى [مكان] | ar-riḥla raqm [raqm] al-muttajiha ilā [makān] | Airport announcement |
+| Please go to gate [number] | يرجى التوجه إلى البوابة رقم [رقم] | yurjā at-tawajjuh ilā al-bawwāba raqm [raqm] | Airport announcement |
+| the last call | النداء الأخير | an-nidāʾ al-akhīr | Airport announcement |
+| Fasten the seat belts | اربطوا أحزمة المقاعد | urbuṭū aḥzimat al-maqāʿid | On a plane |
+| for women only | للسيدات فقط | lis-sayyidāt faqaṭ | Some metro cars and waiting areas |
+| no parking | ممنوع الوقوف | mamnūʿ al-wuqūf | Road sign |
+| one way | اتجاه واحد | ittijāh wāḥid | Road sign |
+| Reduce the speed | هدئ السرعة | haddiʾ as-surʿa | Road sign |
+
+---
+
+## Messages to Drivers and Delivery People
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| I am waiting at the entrance | أنا أنتظر عند المدخل | anā antaẓir ʿinda al-madkhal | Levantine: عم بستنى عند المدخل (ʿam bastannā ʿind il-madkhal) |
+| In how many minutes will you arrive? | بعد كم دقيقة تصل؟ | baʿda kam daqīqa taṣil? | To a woman: تصلين (taṣilīn). Levantine: كم دقيقة وبتوصل؟ (kam daʾīʾa w btūṣal?) |
+| The car is white | السيارة بيضاء | as-sayyāra bayḍāʾ | Levantine: السيارة بيضا (is-sayyāra bēḍā) |
+| What is the plate number? | ما رقم اللوحة؟ | mā raqm al-lawḥa? | Levantine: شو رقم السيارة؟ (shū raʾm is-sayyāra?) |
+| I will come down now | سأنزل الآن | sa-anzil al-ān | Levantine: نازل هلق (nāzil hallaʾ) |
+| Call me when you arrive | اتصل بي عندما تصل | ittaṣil bī ʿindamā taṣil | To a woman: اتصلي (ittaṣilī), تصلين (taṣilīn). Levantine: رن علي لما توصل (rinn ʿalayy lammā tūṣal) |
+| Leave it at the reception, please | اتركه عند الاستقبال من فضلك | utruk-hu ʿinda al-istiqbāl min faḍlika | To a woman: اتركيه (utrukīhi). Levantine: اتركه عند الاستقبال (utrku ʿind il-istiʾbāl) |
+| The order has not arrived | الطلب لم يصل | aṭ-ṭalab lam yaṣil | Levantine: الطلب ما وصل (iṭ-ṭalab mā wiṣil) |
+| I cancelled the trip | ألغيت الرحلة | alghaytu ar-riḥla | Levantine: لغيت الرحلة (laghēt ir-riḥle) |
+
+---
+
 ## Practice
 
 Cover the right column. Say each answer aloud from memory, then check it.

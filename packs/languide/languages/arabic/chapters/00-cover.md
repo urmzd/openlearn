@@ -66,7 +66,7 @@ A beginner who speaks MSA sounds formal, like a person who speaks from a book. T
 - **Scenario phrases:** greetings, directions, transport, restaurants, shopping, accommodation, emergencies, work
 - **Phrase tables:** English, Arabic script, transliteration, and usage notes
 - **Politeness tiers:** casual, polite, and very polite forms
-- **The script:** all 28 letters, the vowel marks, and 60 words to read on signs, menus and screens
+- **The script:** all 28 letters, the vowel marks, and more than 60 words to read on signs, menus and screens
 - **A work chapter:** meetings, email, calls, job titles, and office vocabulary
 - **Practice tables:** ten prompts at the end of each chapter
 

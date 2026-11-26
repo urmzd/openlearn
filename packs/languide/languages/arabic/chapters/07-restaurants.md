@@ -224,6 +224,45 @@ A work lunch or an invitation to a home has fixed phrases. Chapter 10 explains t
 
 ---
 
+## Ordering by Phone and Delivery
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| I want to order food for delivery | أريد أن أطلب طعاما للتوصيل | urīd an aṭlub ṭaʿāman lit-tawṣīl | Levantine: بدي أطلب أكل دليفري (biddī aṭlub akl dilīvarī) |
+| Do you deliver to [area]? | هل توصلون إلى [منطقة]؟ | hal tuwaṣṣilūn ilā [minṭaqa]? | Levantine: بتوصلوا على [منطقة]؟ (bitwaṣṣlū ʿalā [manṭiʾa]?) |
+| How long does the delivery take? | كم يستغرق التوصيل؟ | kam yastaghriq at-tawṣīl? | Levantine: قديش بياخد التوصيل؟ (ʾaddēsh byākhud it-tawṣīl?) |
+| How much is the delivery? | كم سعر التوصيل؟ | kam siʿr at-tawṣīl? | Levantine: قديش التوصيل؟ (ʾaddēsh it-tawṣīl?) |
+| An order in the name of [name] | طلب باسم [اسم] | ṭalab bi-ism [ism] | Same in Levantine |
+| My phone number is [number] | رقم هاتفي [رقم] | raqm hātifī [raqm] | Levantine: رقمي [رقم] (raʾmī [raʾm]) |
+| I will pay on delivery | سأدفع عند الاستلام | sa-adfaʿ ʿinda al-istilām | Levantine: بدفع عند الاستلام (badfaʿ ʿind il-istilām) |
+| I will collect the order myself | سأستلم الطلب بنفسي | sa-astalim aṭ-ṭalab bi-nafsī | Levantine: باخد الطلب بنفسي (bākhud iṭ-ṭalab bi-nafsī) |
+| The order is wrong | الطلب خطأ | aṭ-ṭalab khaṭaʾ | Levantine: الطلب غلط (iṭ-ṭalab ghalaṭ) |
+| Something is missing | هناك شيء ناقص | hunāka shayʾ nāqiṣ | Levantine: في شي ناقص (fī shī nāʾiṣ) |
+
+---
+
+## Dishes to Recognise on a Levantine Menu
+
+Use the pattern ما هو [طبق]؟ (mā huwa [ṭabaq]?) when you do not know a dish.
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| hummus | حمص | ḥummuṣ | A dip of chickpeas and sesame paste |
+| falafel | فلافل | falāfil | Fried balls of chickpeas. Vegetarian |
+| tabbouleh | تبولة | tabbūla | A salad of parsley and tomato |
+| fattoush | فتوش | fattūsh | A salad with pieces of toasted bread |
+| shawarma | شاورما | shāwarmā | Thin slices of grilled meat in bread |
+| kebab | كباب | kabāb | Grilled minced meat |
+| stuffed vine leaves | ورق عنب | waraq ʿinab | Levantine: ورق عنب (waraʾ ʿinab) |
+| lentils with rice | مجدرة | mujaddara | Vegetarian |
+| mansaf | منسف | mansaf | Lamb with rice and a yoghurt sauce. Jordan |
+| strained yoghurt | لبنة | labna | Levantine: لبنة (labne). Breakfast |
+| flatbread with toppings | مناقيش | manāqīsh | Levantine: مناقيش (manāʾīsh). Breakfast |
+| kunafa | كنافة | kunāfa | A hot sweet of pastry and cheese |
+| baklava | بقلاوة | baqlāwa | Levantine: بقلاوة (baʾlāwa) |
+
+---
+
 ## Practice
 
 Cover the right column. Say each answer aloud from memory, then check it.

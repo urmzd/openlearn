@@ -207,6 +207,47 @@ When you address a woman, من فضلك is min faḍliki and لو سمحت is la
 
 ---
 
+## Addresses
+
+Many addresses use a landmark, not only a street name and a number. Ask the person to write the address.
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| What is your address? | ما عنوانك؟ | mā ʿunwānuka? | To a woman: ʿunwānuki. Levantine: شو عنوانك؟ (shū ʿunwānak?) |
+| My address is [address] | عنواني [عنوان] | ʿunwānī [ʿunwān] | Same in Levantine |
+| street number five | شارع رقم خمسة | shāriʿ raqm khamsa | رقم (raqm) "number" |
+| building number ten | مبنى رقم عشرة | mabnā raqm ʿashara | Levantine: بناية رقم عشرة (bināye raʾm ʿashara) |
+| the second floor, apartment four | الطابق الثاني، شقة أربعة | aṭ-ṭābiq ath-thānī, shaqqa arbaʿa | Levantine: الطابق التاني، شقة أربعة (iṭ-ṭābiʾ it-tānī, shaʾʾa arbaʿa) |
+| near the mosque | قرب المسجد | qurba al-masjid | Levantine: جنب الجامع (janb ij-jāmiʿ) |
+| behind the bank | خلف البنك | khalfa al-bank | Levantine: ورا البنك (warā il-bank) |
+| in front of the main gate | أمام البوابة الرئيسية | amāma al-bawwāba ar-raʾīsiyya | Levantine: قدام البوابة الرئيسية (ʾuddām il-bawwābe ir-raʾīsiyye) |
+| the postal code | الرمز البريدي | ar-ramz al-barīdī | Forms |
+| post office box | صندوق بريد | ṣundūq barīd | Common in business addresses |
+| Write the address for me, please | اكتب لي العنوان من فضلك | uktub lī al-ʿunwān min faḍlika | To a woman: اكتبي (uktubī). Levantine: اكتبلي العنوان (iktiblī il-ʿunwān) |
+
+---
+
+## Directions on the Phone
+
+Use these phrases when you meet a colleague, a driver, or a delivery person.
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| Where are you now? | أين أنت الآن؟ | ayna anta al-ān? | To a woman: anti. Levantine: وينك هلق؟ (wēnak hallaʾ?) |
+| I am at the entrance of the building | أنا عند مدخل المبنى | anā ʿinda madkhal al-mabnā | Levantine: أنا عند مدخل البناية (ana ʿind madkhal il-bināye) |
+| I am in front of the pharmacy | أنا أمام الصيدلية | anā amāma aṣ-ṣaydaliyya | Levantine: أنا قدام الصيدلية (ana ʾuddām iṣ-ṣaydaliyye) |
+| What do you see near you? | ماذا ترى قربك؟ | mādhā tarā qurbaka? | Levantine: شو شايف حواليك؟ (shū shāyif ḥawālēk?) |
+| I see a big mosque | أرى مسجدا كبيرا | arā masjidan kabīran | Levantine: شايف جامع كبير (shāyif jāmiʿ kbīr) |
+| Stay there. I am coming | ابق هناك. أنا قادم | ibqa hunāka. anā qādim | Woman speaking: قادمة (qādima). Levantine: خليك هناك. أنا جاي (khallīk hunāk. ana jāy) |
+| I will wait for you at the door | سأنتظرك عند الباب | sa-antaẓiruka ʿinda al-bāb | To a woman: sa-antaẓiruki. Levantine: بستناك عند الباب (bastannāk ʿind il-bāb) |
+| I am on the way | أنا في الطريق | anā fī aṭ-ṭarīq | Levantine: أنا بالطريق (ana biṭ-ṭarīʾ) |
+| I am five minutes away | أنا على بعد خمس دقائق | anā ʿalā buʿd khams daqāʾiq | Levantine: باقي لي خمس دقايق (bāʾī lī khams daʾāyiʾ) |
+| I cannot find the place | لا أجد المكان | lā ajid al-makān | Levantine: مش لاقي المكان (mish lāʾī il-makān) |
+| Which entrance? | أي مدخل؟ | ayy madkhal? | Same in Levantine |
+| Is there a car park? | هل يوجد موقف سيارات؟ | hal yūjad mawqif sayyārāt? | Levantine: في موقف؟ (fī mawʾif?) |
+
+---
+
 ## Practice
 
 Cover the right column. Say each answer aloud from memory, then check it.

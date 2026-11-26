@@ -17,7 +17,7 @@ When you address a woman, من فضلك is min faḍliki and لو سمحت is la
 | Do you have this in [colour]? | هل عندكم هذا باللون [لون]؟ | hal ʿindakum hādhā bil-lawn [lawn]? | هل عندكم هذا باللون الأسود؟ (hal ʿindakum hādhā bil-lawn al-aswad?) = Do you have this in black? |
 | Do you have a [size] size? | هل عندكم مقاس [مقاس]؟ | hal ʿindakum maqās [maqās]? | هل عندكم مقاس أكبر؟ (hal ʿindakum maqās akbar?) = Do you have a bigger size? |
 | Can I [action] this? | هل يمكنني أن [فعل] هذا؟ | hal yumkinunī an [fiʿl] hādhā? | هل يمكنني أن أجرب هذا؟ (hal yumkinunī an ujarrib hādhā?) = Can I try this? |
-| This is too [adjective] | هذا [صفة] جدا | hādhā [ṣifa] jiddan | هذا غال جدا (hādhā ghālin jiddan) = This is too expensive |
+| This is too [adjective] | هذا [صفة] جدا | hādhā [ṣifa] jiddan | هذا كبير جدا (hādhā kabīr jiddan) = This is too big |
 
 ---
 
@@ -95,8 +95,8 @@ In a traditional market, people expect you to bargain. In a shopping centre and 
 |---------|--------|-----------------|-------|
 | How much is this? | بكم هذا؟ | bi-kam hādhā? | Levantine: قديش هاد؟ (ʾaddēsh hād?) |
 | What is the price? | ما السعر؟ | mā as-siʿr? | Levantine: قديش السعر؟ (ʾaddēsh is-siʿr?) |
-| It is expensive | هذا غال | hādhā ghālin | Often written غالي. Levantine: غالي (ghālī) |
-| It is very expensive | هذا غال جدا | hādhā ghālin jiddan | Levantine: كتير غالي (ktīr ghālī) |
+| It is expensive | السعر مرتفع | as-siʿr murtafiʿ | Literally "the price is high". Levantine: غالي (ghālī) |
+| It is very expensive | السعر مرتفع جدا | as-siʿr murtafiʿ jiddan | Levantine: كتير غالي (ktīr ghālī) |
 | cheap | رخيص | rakhīṣ | Levantine: رخيص (rkhīṣ) |
 | Is there a discount? | هل يوجد خصم؟ | hal yūjad khaṣm? | Levantine: في خصم؟ (fī khaṣm?) |
 | Can you lower the price? | هل يمكن تخفيض السعر؟ | hal yumkin takhfīḍ as-siʿr? | Levantine: بتنزل السعر شوي؟ (bitnazzil is-siʿr shwayy?) |
@@ -213,6 +213,44 @@ In a traditional market, people expect you to bargain. In a shopping centre and 
 | screen | شاشة | shāsha | Same in Levantine |
 | Can you repair this? | هل يمكن إصلاح هذا؟ | hal yumkin iṣlāḥ hādhā? | Levantine: بتصلح هاد؟ (bitṣalliḥ hād?) |
 | When will it be ready? | متى يكون جاهزا؟ | matā yakūn jāhizan? | Levantine: إيمتى بيجهز؟ (ēmta byijhaz?) |
+
+---
+
+## At the Pharmacy
+
+Chapter 1 has the phrases for medical emergencies. These phrases are for small problems.
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| medicine | دواء | dawāʾ | Plural: أدوية (adwiya). Levantine: دوا (dawā) |
+| I need medicine for a headache | أحتاج إلى دواء للصداع | aḥtāj ilā dawāʾ liṣ-ṣudāʿ | Levantine: بدي دوا للصداع (biddī dawā liṣ-ṣudāʿ) |
+| I have a cold | عندي زكام | ʿindī zukām | Levantine: معي رشح (maʿī rashḥ) |
+| I have a cough | عندي سعال | ʿindī suʿāl | Levantine: معي سعلة (maʿī saʿle) |
+| I have a sore throat | عندي ألم في الحلق | ʿindī alam fī al-ḥalq | Levantine: حلقي بيوجعني (ḥalʾī byūjaʿnī) |
+| I am allergic to penicillin | عندي حساسية من البنسلين | ʿindī ḥasāsiyya min al-binisilīn | Same in Levantine |
+| Do I need a prescription? | هل أحتاج إلى وصفة طبية؟ | hal aḥtāj ilā waṣfa ṭibbiyya? | Levantine: لازم وصفة؟ (lāzim waṣfe?) |
+| Here is the prescription | هذه هي الوصفة | hādhihi hiya al-waṣfa | Levantine: هاي الوصفة (hāy il-waṣfe) |
+| How many times a day? | كم مرة في اليوم؟ | kam marra fī al-yawm? | Levantine: كم مرة باليوم؟ (kam marra bil-yōm?) |
+| Before food or after it? | قبل الأكل أم بعده؟ | qabla al-akl am baʿdahu? | Levantine: قبل الأكل ولا بعده؟ (ʾabl il-akl willā baʿdu?) |
+| tablets | حبوب | ḥubūb | Formal: أقراص (aqrāṣ) |
+| painkiller | مسكن | musakkin | Same in Levantine |
+| bandage | ضمادة | ḍimāda | Levantine: شاش (shāsh) |
+
+---
+
+## Online Orders and Delivery
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| I ordered this online | طلبت هذا عبر الإنترنت | ṭalabtu hādhā ʿabra al-intarnit | Levantine: طلبته أونلاين (ṭalabtu ōnlāyn) |
+| the order number | رقم الطلب | raqm aṭ-ṭalab | Levantine: رقم الطلب (raʾm iṭ-ṭalab) |
+| When does the order arrive? | متى يصل الطلب؟ | matā yaṣil aṭ-ṭalab? | Levantine: إيمتى بيوصل الطلب؟ (ēmta byūṣal iṭ-ṭalab?) |
+| Is delivery free? | هل التوصيل مجاني؟ | hal at-tawṣīl majjānī? | Levantine: التوصيل ببلاش؟ (it-tawṣīl bi-balāsh?) |
+| payment on delivery | الدفع عند الاستلام | ad-dafʿ ʿinda al-istilām | A common option |
+| the delivery address | عنوان التوصيل | ʿunwān at-tawṣīl | Forms |
+| I want to track the order | أريد تتبع الطلب | urīd tatabbuʿ aṭ-ṭalab | Apps and websites |
+| The package has not arrived | الطرد لم يصل | aṭ-ṭard lam yaṣil | Levantine: الطرد ما وصل (iṭ-ṭard mā wiṣil) |
+| The package arrived damaged | وصل الطرد تالفا | waṣala aṭ-ṭard tālifan | Levantine: الطرد وصل خربان (iṭ-ṭard wiṣil kharbān) |
 
 ---
 

@@ -11,7 +11,7 @@ When you address a woman, من فضلك is min faḍliki and لو سمحت is la
 | Pattern | Arabic | Transliteration | Example |
 |---------|--------|-----------------|---------|
 | I have a booking in the name of [name] | عندي حجز باسم [اسم] | ʿindī ḥajz bi-ism [ism] | عندي حجز باسم سارة (ʿindī ḥajz bi-ism sāra) = I have a booking in the name of Sara |
-| I want a room for [number] nights | أريد غرفة ل[عدد] ليال | urīd ghurfa li-[ʿadad] layālin | أريد غرفة لثلاث ليال (urīd ghurfa li-thalāth layālin) = I want a room for three nights |
+| I want a room for [number] days | أريد غرفة لمدة [عدد] أيام | urīd ghurfa li-muddat [ʿadad] ayyām | أريد غرفة لمدة ثلاثة أيام (urīd ghurfa li-muddat thalāthat ayyām) = I want a room for three days |
 | Is [service] included? | هل [خدمة] مشمول؟ | hal [khidma] mashmūl? | هل الفطور مشمول؟ (hal al-fuṭūr mashmūl?) = Is breakfast included? |
 | [thing] does not work | [شيء] لا يعمل | [shayʾ] lā yaʿmal | المكيف لا يعمل (al-mukayyif lā yaʿmal) = The air conditioner does not work |
 | There is no [thing] in the room | لا يوجد [شيء] في الغرفة | lā yūjad [shayʾ] fī al-ghurfa | لا يوجد صابون في الغرفة (lā yūjad ṣābūn fī al-ghurfa) = There is no soap in the room |
@@ -138,6 +138,24 @@ When you address a woman, من فضلك is min faḍliki and لو سمحت is la
 
 ---
 
+## Reception Services
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| Is there a gym? | هل يوجد نادي رياضي؟ | hal yūjad nādī riyāḍī? | Levantine: في جيم؟ (fī jīm?) |
+| Is there a swimming pool? | هل يوجد مسبح؟ | hal yūjad masbaḥ? | Levantine: في مسبح؟ (fī masbaḥ?) |
+| Is there a meeting room? | هل توجد قاعة اجتماعات؟ | hal tūjad qāʿat ijtimāʿāt? | Levantine: في قاعة اجتماعات؟ (fī ʾāʿit ijtimāʿāt?) |
+| Can I print a document? | هل يمكنني طباعة مستند؟ | hal yumkinunī ṭibāʿat mustanad? | Levantine: ممكن أطبع ورقة؟ (mumkin aṭbaʿ waraʾa?) |
+| Where can I change money? | أين يمكنني صرف العملة؟ | ayna yumkinunī ṣarf al-ʿumla? | Levantine: وين بصرف مصاري؟ (wēn baṣrif maṣārī?) |
+| Are there messages for me? | هل توجد رسائل لي؟ | hal tūjad rasāʾil lī? | Levantine: في رسايل إلي؟ (fī rasāyil ilī?) |
+| I am expecting a visitor | أنتظر زائرا | antaẓir zāʾiran | Levantine: ناطر ضيف (nāṭir ḍēf) |
+| Please call me when he arrives | أرجو الاتصال بي عند وصوله | arjū al-ittiṣāl bī ʿinda wuṣūlihi | For a woman: وصولها (wuṣūlihā) |
+| When does the restaurant close? | متى يغلق المطعم؟ | matā yughliq al-maṭʿam? | Levantine: إيمتى بيسكر المطعم؟ (ēmta bysakkir il-maṭʿam?) |
+| I need a taxi at six in the morning | أحتاج إلى سيارة أجرة في الساعة السادسة صباحا | aḥtāj ilā sayyārat ujra fī as-sāʿa as-sādisa ṣabāḥan | Levantine: بدي تاكسي الساعة ستة الصبح (biddī tāksī is-sēʿa sitte iṣ-ṣubḥ) |
+| How far is the airport from here? | كم يبعد المطار عن هنا؟ | kam yabʿud al-maṭār ʿan hunā? | Levantine: قديش بيبعد المطار من هون؟ (ʾaddēsh byibʿid il-maṭār min hōn?) |
+
+---
+
 ## Renting an Apartment
 
 | English | Arabic | Transliteration | Notes |
@@ -162,6 +180,73 @@ When you address a woman, من فضلك is min faḍliki and لو سمحت is la
 | neighbours | الجيران | al-jīrān | Levantine: الجيران (ij-jīrān) |
 | When can I move in? | متى يمكنني الانتقال؟ | matā yumkinunī al-intiqāl? | Levantine: إيمتى بقدر أنقل؟ (ēmta baʾdar anʾul?) |
 | I want to see the apartment | أريد أن أرى الشقة | urīd an arā ash-shaqqa | Levantine: بدي أشوف الشقة (biddī ashūf ish-shaʾʾa) |
+
+---
+
+## Living in the Apartment
+
+### Repairs and the Landlord
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| Hello, I am the tenant of apartment [number] | مرحبا، أنا مستأجر الشقة رقم [رقم] | marḥaban, anā mustaʾjir ash-shaqqa raqm [raqm] | Woman speaking: مستأجرة (mustaʾjira) |
+| There is a problem in the apartment | توجد مشكلة في الشقة | tūjad mushkila fī ash-shaqqa | Levantine: في مشكلة بالشقة (fī mishkle bish-shaʾʾa) |
+| The water heater does not work | سخان الماء لا يعمل | sakhkhān al-māʾ lā yaʿmal | Levantine: السخان مش شغال (is-sakhkhān mish shaghghāl) |
+| The washing machine is broken | الغسالة معطلة | al-ghassāla muʿaṭṭala | Levantine: الغسالة خربانة (il-ghassāle kharbāne) |
+| The tap leaks water | الحنفية تسرب الماء | al-ḥanafiyya tusarrib al-māʾ | Levantine: الحنفية عم تنقط (il-ḥanafiyye ʿam tnaʾʾiṭ) |
+| The electricity was cut | انقطعت الكهرباء | inqaṭaʿat al-kahrabāʾ | Levantine: انقطعت الكهربا (inʾaṭʿat il-kahrabā) |
+| The internet is slow | الإنترنت بطيء | al-intarnit baṭīʾ | Same in Levantine |
+| I need a plumber | أحتاج إلى سباك | aḥtāj ilā sabbāk | The dialect word changes from country to country |
+| I need an electrician | أحتاج إلى كهربائي | aḥtāj ilā kahrabāʾī | Levantine: بدي كهربجي (biddī kahrabjī) |
+| When can you come? | متى يمكنك أن تأتي؟ | matā yumkinuka an taʾtiya? | Levantine: إيمتى بتقدر تيجي؟ (ēmta btiʾdar tījī?) |
+| How much does the repair cost? | كم تكلفة الإصلاح؟ | kam taklifat al-iṣlāḥ? | Levantine: قديش بيكلف التصليح؟ (ʾaddēsh bikallif it-taṣlīḥ?) |
+| When is the rent payment date? | متى موعد دفع الإيجار؟ | matā mawʿid dafʿ al-ījār? | Levantine: إيمتى لازم أدفع الإيجار؟ (ēmta lāzim adfaʿ il-ījār?) |
+| I will transfer the rent today | سأحول الإيجار اليوم | sa-uḥawwil al-ījār al-yawm | Levantine: رح أحول الإيجار اليوم (raḥ aḥawwil il-ījār il-yōm) |
+| I want to renew the contract | أريد تجديد العقد | urīd tajdīd al-ʿaqd | Levantine: بدي أجدد العقد (biddī ajaddid il-ʿaʾd) |
+| I will leave the apartment at the end of the month | سأترك الشقة في نهاية الشهر | sa-atruk ash-shaqqa fī nihāyat ash-shahr | Levantine: رح أترك الشقة آخر الشهر (raḥ atruk ish-shaʾʾa ākhir ish-shahr) |
+
+### Bills and Services
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| the electricity bill | فاتورة الكهرباء | fātūrat al-kahrabāʾ | Levantine: فاتورة الكهربا (fātūrit il-kahrabā) |
+| the water bill | فاتورة الماء | fātūrat al-māʾ | Levantine: فاتورة المي (fātūrit il-mayy) |
+| the internet subscription | اشتراك الإنترنت | ishtirāk al-intarnit | Same in Levantine |
+| a gas cylinder | أسطوانة غاز | usṭuwānat ghāz | For cooking. Levantine: جرة غاز (jarrit ghāz) |
+| Where do I pay the bill? | أين أدفع الفاتورة؟ | ayna adfaʿ al-fātūra? | Levantine: وين بدفع الفاتورة؟ (wēn badfaʿ il-fātūra?) |
+| How much is the bill this month? | كم الفاتورة هذا الشهر؟ | kam al-fātūra hādhā ash-shahr? | Levantine: قديش الفاتورة هالشهر؟ (ʾaddēsh il-fātūra hash-shahr?) |
+| the rubbish | النفايات | an-nufāyāt | Levantine: الزبالة (iz-zbāle) |
+| Where do I put the rubbish? | أين أضع النفايات؟ | ayna aḍaʿ an-nufāyāt? | Levantine: وين بحط الزبالة؟ (wēn baḥuṭṭ iz-zbāle?) |
+| the building caretaker | حارس المبنى | ḥāris al-mabnā | Levantine: الناطور (in-nāṭūr) |
+
+### Household Words
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| furniture | أثاث | athāth | Levantine: عفش (ʿafsh) |
+| table | طاولة | ṭāwila | Levantine: طاولة (ṭāwle) |
+| chair | كرسي | kursī | Same in Levantine |
+| sofa | أريكة | arīka | Levantine: كنباية (kanabāye) |
+| wardrobe, cupboard | خزانة | khizāna | Levantine: خزانة (khzāne) |
+| lamp | مصباح | miṣbāḥ | Levantine: لمبة (lamba) |
+| curtain | ستارة | sitāra | Levantine: برداية (birdāye) |
+| carpet | سجادة | sajjāda | Levantine: سجادة (sijjāde) |
+| washing machine | غسالة | ghassāla | Levantine: غسالة (ghassāle) |
+| oven | فرن | furn | Same in Levantine |
+| water heater | سخان | sakhkhān | Same in Levantine |
+| roof | سطح | saṭḥ | Same in Levantine |
+| garage | مرآب | mirʾāb | Everyday word: كراج (karāj) |
+
+### Neighbours
+
+| English | Arabic | Transliteration | Notes |
+|---------|--------|-----------------|-------|
+| Hello, I am your new neighbour | مرحبا، أنا جاركم الجديد | marḥaban, anā jārukum al-jadīd | Woman speaking: جارتكم الجديدة (jāratukum al-jadīda) |
+| I live in the apartment above | أسكن في الشقة العلوية | askun fī ash-shaqqa al-ʿulwiyya | Levantine: ساكن فوق (sākin fōʾ) |
+| Sorry for the disturbance | آسف على الإزعاج | āsif ʿalā al-izʿāj | Woman speaking: آسفة (āsifa) |
+| Can you lower the sound, please? | هل يمكن خفض الصوت من فضلك؟ | hal yumkin khafḍ aṣ-ṣawt min faḍlika? | Levantine: ممكن توطي الصوت؟ (mumkin twaṭṭī iṣ-ṣōt?) |
+| If you need anything, I am here | إذا احتجت أي شيء، أنا موجود | idhā iḥtajta ayy shayʾ, anā mawjūd | To a woman: iḥtajti. Levantine: إذا بدك شي، أنا موجود (izā biddak shī, ana mawjūd) |
+| Please come in and have coffee | تفضل اشرب قهوة | tafaḍḍal ishrab qahwa | An invitation that you hear. Levantine: تفضل اشرب قهوة (tfaḍḍal ishrab ʾahwe) |
 
 ---
 
