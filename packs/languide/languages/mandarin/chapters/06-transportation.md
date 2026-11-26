@@ -59,7 +59,7 @@ This chapter covers the subway, buses, taxis and ride-hailing, trains, flights a
 | Can I scan a code to enter? | 可以扫码进站吗？ | Kěyǐ sǎomǎ jìnzhàn ma? | Mainland. Most gates read a QR code |
 | I want to top up my card | 我要充值 | Wǒ yào chōngzhí | For a transport card |
 | Which line is this? | 这是几号线？ | Zhè shì jǐ hào xiàn? | Standard |
-| Which direction is this train going? | 这趟车往哪个方向？ | Zhè tàng chē wǎng nǎge fāngxiàng? | Check before you board |
+| Where does this train go? | 这趟车是去哪儿的？ | Zhè tàng chē shì qù nǎr de? | Check before you board |
 | What time is the last train? | 末班车几点？ | Mòbānchē jǐ diǎn? | Standard |
 | What time is the first train? | 首班车几点？ | Shǒubānchē jǐ diǎn? | Standard |
 

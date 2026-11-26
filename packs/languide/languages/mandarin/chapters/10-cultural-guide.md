@@ -342,10 +342,10 @@ In mainland China, WeChat (微信, Wēixìn) is the main tool for personal and w
 | Are you there? | 在吗？ | Zài ma? | Do not send this alone. Put your question in the same message |
 | Received | 收到 | Shōudào | The standard reply to any work instruction |
 | OK | 好的 | Hǎo de | Polite. A bare 好 (hǎo) can read as cold |
-| Mm | 嗯 | Èn | Can read as cold. 嗯嗯 (èn èn) is warmer |
+| Mm | 嗯 | Èn | Can read as cold. 嗯嗯 (èn èn) is warmer. Typed as en. Dictionaries spell the sound ǹg |
 | Sorry, I only just saw this | 不好意思，刚看到 | Bù hǎoyìsi, gāng kàndào | Polite. For a late reply |
 | Thank you for your hard work | 辛苦了 | Xīnkǔ le | Polite. Closes many work chats |
-| Haha | 哈哈 | Hāhā | Softens a message. A single 哈 can read as sarcastic |
+| Haha | 哈哈 | Hāhā | Softens a message. Avoid 呵呵 (hēhē): it reads as cold or sarcastic |
 | Awesome | 666 | liù liù liù | Casual slang. From 溜 (liù), "smooth, skilled" |
 | Bye-bye | 88 | bā bā | Casual slang. Sounds like "bye-bye" |
 
@@ -392,7 +392,7 @@ Many people send voice messages instead of text. A learner may ask for text.
 | May all go as you wish | 万事如意 | Wànshì rúyì | Formal good wish |
 | Have a good weekend | 周末愉快 | Zhōumò yúkuài | Friday at work |
 | Get well soon | 早日康复 | Zǎorì kāngfù | To a sick person |
-| Have a safe journey | 一路平安 | Yílù píng'ān | To a traveler |
+| Have a safe journey | 一路平安 | Yílù píng'ān | To a person who is leaving on a trip |
 
 ---
 

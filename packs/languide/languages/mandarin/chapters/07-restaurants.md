@@ -11,7 +11,7 @@ This chapter follows a meal from arrival to payment, then covers dietary needs, 
 | [number] people | [数字]位 | [shùzì] wèi | 三位 (Sān wèi) = Three people |
 | I want [dish] | 我要[菜] | Wǒ yào [cài] | 我要一碗牛肉面 (Wǒ yào yì wǎn niúròu miàn) = I want a bowl of beef noodles |
 | Bring one [dish] | 来一个[菜] | Lái yí ge [cài] | 来一个麻婆豆腐 (Lái yí ge mápó dòufu) = One mapo tofu, please |
-| One more [measure word] of [thing] | 再来一[量词][东西] | Zài lái yì [liàngcí] [dōngxi] | 再来一瓶啤酒 (Zài lái yì píng píjiǔ) = One more bottle of beer |
+| One more [measure word] of [thing] | 再来一[量词][东西] | Zài lái yī [liàngcí] [dōngxi] | 再来一瓶啤酒 (Zài lái yì píng píjiǔ) = One more bottle of beer |
 | Do you have [thing]? | 有[东西]吗？ | Yǒu [dōngxi] ma? | 有素菜吗？ (Yǒu sùcài ma?) = Do you have vegetarian dishes? |
 | Don't add [ingredient] | 不要放[东西] | Bú yào fàng [dōngxi] | 不要放香菜 (Bú yào fàng xiāngcài) = No cilantro |
 | Less [ingredient] | 少放[东西] | Shǎo fàng [dōngxi] | 少放盐 (Shǎo fàng yán) = Less salt |
@@ -20,6 +20,9 @@ This chapter follows a meal from arrival to payment, then covers dietary needs, 
 | I can't eat [food] | 我不能吃[食物] | Wǒ bù néng chī [shíwù] | 我不能吃辣 (Wǒ bù néng chī là) = I can't eat spicy food |
 | Please give me [thing] | 请给我[东西] | Qǐng gěi wǒ [dōngxi] | 请给我一双筷子 (Qǐng gěi wǒ yì shuāng kuàizi) = Please give me a pair of chopsticks |
 | The [dish] is too [adjective] | [菜]太[形容词]了 | [cài] tài [xíngróngcí] le | 这个菜太咸了 (Zhège cài tài xián le) = This dish is too salty |
+
+- 来 (lái, "to come") is the usual verb for ordering. It means "bring".
+- The tone of 一 depends on the measure word that follows: 一瓶 (yì píng), 一碗 (yì wǎn), 一个 (yí ge), 一份 (yí fèn).
 
 ---
 

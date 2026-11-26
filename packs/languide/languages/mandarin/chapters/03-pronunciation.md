@@ -296,6 +296,7 @@ Say "ee". Keep your tongue in that position and round your lips tightly, as for 
 | iang | "yahng" | 想 xiǎng | to want, to think |
 | iong | "yoong" | 用 yòng | to use |
 | uang | "wahng" | 黄 huáng | yellow |
+| ueng | "wung". Always written weng. Rare | 翁 wēng | old man |
 
 ### Finals That Mislead English Speakers
 
