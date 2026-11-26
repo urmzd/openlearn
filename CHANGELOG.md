@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.31.0 (2026-11-26)
+
+### Features
+
+- **web**: book menu, a PDF for each book and AI check prompts (#70) ([7b0eb00](https://github.com/urmzd/openlearn/commit/7b0eb0031c96b74926cfa95b220731536ebd4c21))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.30.0...v0.31.0)
+
+
 ## 0.29.2 (2026-10-29)
 
 ### Bug Fixes
