@@ -22,7 +22,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: course.title,
-			favicon: '/icon.svg',
+			favicon: '/favicon.svg',
 			description: course.description,
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/urmzd/openlearn' }],
 			customCss: ['katex/dist/katex.min.css', './src/styles/custom.css'],
@@ -30,6 +30,15 @@ export default defineConfig({
 				Head: './src/components/Head.astro',
 				PageTitle: './src/components/PageTitle.astro',
 				Footer: './src/components/Footer.astro',
+				SiteTitle: './src/components/SiteTitle.astro',
+				SocialIcons: './src/components/SocialIcons.astro',
+				ThemeSelect: './src/components/ThemeSelect.astro',
+			},
+			// Code blocks take their surfaces from the site palette in custom.css.
+			expressiveCode: {
+				themes: ['github-dark', 'github-light'],
+				useStarlightUiThemeColors: true,
+				styleOverrides: { borderRadius: '0.5rem', codeFontFamily: 'var(--__sl-font-mono)' },
 			},
 			plugins: [starlightLlmsTxt()],
 			routeMiddleware: './src/routeData.ts',

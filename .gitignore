@@ -22,3 +22,6 @@ mermaid-filter.err
 
 # Compiled binaries from the exercise sources.
 a.out
+
+# Worktrees for parallel branches
+.worktrees/

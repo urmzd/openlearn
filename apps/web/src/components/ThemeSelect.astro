@@ -1,0 +1,46 @@
+---
+// One button, as on urmzd.com: it shows the current theme and switches to the
+// other. With no saved choice the theme follows the system setting.
+---
+<theme-toggle>
+  <button class="control" type="button" aria-label="Switch theme">
+    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"></path></svg>
+  </button>
+</theme-toggle>
+<script>
+  // Starlight's ThemeProvider reads this key before the first paint.
+  const storageKey = 'starlight-theme';
+  const root = document.documentElement;
+  const system = matchMedia('(prefers-color-scheme: dark)');
+  const saved = () => {
+    try {
+      const theme = localStorage.getItem(storageKey);
+      return theme === 'light' || theme === 'dark' ? theme : null;
+    } catch { return null; }
+  };
+  const current = () => (root.dataset.theme === 'light' ? 'light' : 'dark');
+  function label() {
+    const text = current() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    for (const button of document.querySelectorAll('theme-toggle button')) {
+      button.setAttribute('aria-label', text);
+      button.setAttribute('title', text);
+    }
+  }
+  system.addEventListener('change', () => {
+    if (saved()) return;
+    root.dataset.theme = system.matches ? 'dark' : 'light';
+    label();
+  });
+  class ThemeToggle extends HTMLElement {
+    connectedCallback() {
+      this.querySelector('button')?.addEventListener('click', () => {
+        root.dataset.theme = current() === 'dark' ? 'light' : 'dark';
+        try { localStorage.setItem(storageKey, root.dataset.theme); } catch { /* The choice lasts for this page only. */ }
+        label();
+      });
+      label();
+    }
+  }
+  customElements.define('theme-toggle', ThemeToggle);
+</script>

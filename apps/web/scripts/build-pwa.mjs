@@ -47,7 +47,7 @@ const icon = await fs.readFile(path.join(root, 'public/icon.svg'));
 for (const size of [192, 512]) await sharp(icon).resize(size, size).png().toFile(path.join(dist, `icon-${size}.png`));
 await sharp(icon).resize(180, 180).png().toFile(path.join(dist, 'apple-touch-icon.png'));
 const name = data.title;
-const manifest = { id: '/', name, short_name: 'OpenLearn', description: 'Free books on technology, mathematics, and engineering. Read online or save a book for offline reading.', start_url: '/', scope: '/', display: 'standalone', background_color: '#f3f7fb', theme_color: '#163d54', lang: 'en', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }] };
+const manifest = { id: '/', name, short_name: 'OpenLearn', description: 'Free books on technology, mathematics, and engineering. Read online or save a book for offline reading.', start_url: '/', scope: '/', display: 'standalone', background_color: '#0a0a0a', theme_color: '#0a0a0a', lang: 'en', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }] };
 await fs.writeFile(path.join(dist, 'manifest.webmanifest'), JSON.stringify(manifest));
 const shell = ['/', '/offline/', '/app/catalog.json', '/app/offline.json', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/icon.svg', ...shared.map(toURL)];
 const worker = workerSource.replace('__OPENLEARN_BUILD__', build).replace('__OPENLEARN_SHELL__', JSON.stringify(shell));
