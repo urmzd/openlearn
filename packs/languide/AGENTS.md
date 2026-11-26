@@ -18,6 +18,7 @@ agents/checklist.md          — quality checklist for guide content
 paths/<slug>/                — staged learning path: path.tsv and README.md
 scripts/build-guide.sh       — shell script for assembling chapters into PDFs
 scripts/rtl.lua              — Pandoc filter that sets Arabic-script text right to left
+scripts/tables.lua           — Pandoc filter that sizes table columns from their content
 templates/tourism-guide.tex  — LaTeX template for PDF styling
 outputs/                     — built PDFs (gitignored)
 skills/                      — Claude Code skills for automating guide creation

@@ -30,6 +30,30 @@
       <sub><b>Spanish</b> — reusable phrase templates</sub>
     </td>
   </tr>
+  <tr>
+    <td align="center">
+      <img src="showcase/tajik-phrases.png" alt="Tajik phrases in Cyrillic and Persian script" width="420" />
+      <br />
+      <sub><b>Tajik and Persian</b> — one phrase, two scripts</sub>
+    </td>
+    <td align="center">
+      <img src="showcase/arabic-phrases.png" alt="Arabic pattern templates" width="420" />
+      <br />
+      <sub><b>Arabic</b> — right-to-left patterns with transliteration</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="showcase/mandarin-phrases.png" alt="Mandarin survival characters" width="420" />
+      <br />
+      <sub><b>Mandarin</b> — survival characters with pinyin</sub>
+    </td>
+    <td align="center">
+      <img src="showcase/russian-phrases.png" alt="Russian pattern templates" width="420" />
+      <br />
+      <sub><b>Russian</b> — patterns that name the case of each slot</sub>
+    </td>
+  </tr>
 </table>
 
 ## Languages
@@ -128,6 +152,9 @@ languages/<slug>/spec.md     Content specification for that language
 agents/                      System prompt and quality checklist
 skills/                      Claude Code skills for automating guide creation
 scripts/build-guide.sh       Shell script for assembling chapters into PDFs
+scripts/rtl.lua              Pandoc filter that sets Arabic-script text right to left
+scripts/tables.lua           Pandoc filter that sizes table columns from their content
+paths/<slug>/                Staged learning path for each guide
 templates/                   LaTeX template for PDF styling
 outputs/                     Built PDFs (gitignored)
 ```
